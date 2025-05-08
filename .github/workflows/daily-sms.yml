@@ -1,0 +1,26 @@
+name: Daily SMS Prompt
+
+on:
+  schedule:
+    - cron: "0 14 * * *" # 8 AM CST (14 UTC)
+  workflow_dispatch:
+
+jobs:
+  send-daily-sms:
+    runs-on: ubuntu-latest
+    env:
+      TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+      TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+      TWILIO_NUMBER: ${{ secrets.TWILIO_NUMBER }}
+      MY_PHONE_NUMBER: ${{ secrets.MY_PHONE_NUMBER }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - name: Install dependencies
+        run: |
+          pip install twilio gspread oauth2client
+      - name: Send SMS
+        run: python daily_prompt.py
