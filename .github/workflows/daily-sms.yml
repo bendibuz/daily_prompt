@@ -8,6 +8,7 @@ on:
 jobs:
   send-daily-sms:
     runs-on: ubuntu-latest
+
     env:
       TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
       TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
@@ -22,5 +23,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install twilio gspread oauth2client pytz
+      - name: Decode Google Credentials
+        run: |
+          echo "${{ secrets.GOOGLE_CREDS_BASE64 }}" | base64 --decode > google-creds.json
       - name: Send SMS
         run: python daily_prompt.py
