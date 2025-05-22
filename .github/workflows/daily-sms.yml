@@ -21,6 +21,6 @@ jobs:
           python-version: "3.x"
       - name: Install dependencies
         run: |
-          pip install twilio gspread oauth2client
+          pip install twilio gspread oauth2client pytz
       - name: Send SMS
         run: python daily_prompt.py
