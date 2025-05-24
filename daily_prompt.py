@@ -15,7 +15,7 @@ MY_PHONE = os.getenv("MY_PHONE_NUMBER")
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("google-creds.json", scope)
 client = gspread.authorize(creds)
-sheet = client.open("Ben Daily Tasks").sheet1
+sheet = client.open("Ben's Daily Tasks").sheet1
 
 # --- SMS Prompt ---
 def send_sms():
