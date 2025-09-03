@@ -30,6 +30,6 @@ def send_sms():
 # --- Main ---
 if __name__ == "__main__":
     # Optional logging to sheet
-    now_cst = datetime.now(pytz.timezone('America/Chicago')).strftime('%Y-%m-%d %H:%M')
-    sheet.append_row([now_cst, "Prompt sent"])
+    # now_cst = datetime.now(pytz.timezone('America/Chicago')).strftime('%Y-%m-%d %H:%M')
+    # sheet.append_row([now_cst, "Prompt sent"])
     send_sms()
