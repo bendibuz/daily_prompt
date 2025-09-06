@@ -5,6 +5,7 @@ from app.models.models import User, UserMessage, Goal
 from twilio.twiml.messaging_response import MessagingResponse
 
 
+from app.services.firebase_service import create_user_v2
 
 @app.post("/user_response/")
 def handle_response(response: UserMessage):
@@ -39,4 +40,13 @@ def update_status():
 #     resp = MessagingResponse()
 #     resp.message("The Robots are coming! Head for the hills!")
 
+<<<<<<< HEAD
 #     return str(resp)
+=======
+#     # Return the TwiML (as XML) response
+#     return Response(str(resp), mimetype='text/xml')
+
+@app.post("/create_user")
+def create_user(user: User):
+    create_user_v2(user)
+>>>>>>> 17366439cafb9181a32653513d0ea3babd68074d

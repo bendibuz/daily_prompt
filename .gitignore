@@ -4,3 +4,4 @@ google-creds-base64.txt
 venv/
 */__pycache__/*
 secrets/
+app/adapters/__pycache__/*
