@@ -9,7 +9,7 @@ router = APIRouter()
 
 from app.services.firebase_service import create_user_v2
 
-@app.get("/")
+@router.get("/")
 def root_response():
     return("Hello World!")
 
