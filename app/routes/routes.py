@@ -8,11 +8,11 @@ router = APIRouter()
 
 from app.services.firebase_service import create_user_v2
 
-@app.get("/")
+@router.get("/")
 def root_response():
     return("Hello World!")
 
-@app.post("/user_response/")
+@router.post("/user_response/")
 def handle_response(response):
     try:
         print("Got a message!")
