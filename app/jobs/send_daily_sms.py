@@ -10,16 +10,29 @@ TWILIO_AUTH = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_NUMBER = os.getenv("TWILIO_NUMBER")
 MY_PHONE = os.getenv("MY_PHONE_NUMBER")
 
+morning_message = '''Good morning, Ben 🌞!
+        What are your most important goals for the day?
+        List a goal and a score separated by a comma
+        Separate goals with a semicolon, like this:
+        Water the plants, 5;
+        Wash the dishes, 10
+        '''
+
+def build_string(goals):
+    msg_string = ", ".join(goal for goal in goals)
+    return msg_string
+
+afternoon_checkin = (
+    f'Just checking in... have you completed... {goal.name for goal in goals}'
+)
+
+
 # --- SMS Prompt ---
 def send_sms():
-    message = (
-        "Good morning, Ben 🌞 What are your top 3 tasks for today?\n"
-        "Reply with each one and a point value (1–5).\n"
-        "Example:\n1. Finish deck (5)\n2. Email supplier (2)\n3. Dev Sunny nav (4)"
-    )
+    
     client = Client(TWILIO_SID, TWILIO_AUTH)
     client.messages.create(to=MY_PHONE, from_=TWILIO_NUMBER, body=message)
 
 # --- Main ---
 if __name__ == "__main__":
-    send_sms()
+    send_sms(morning_message)

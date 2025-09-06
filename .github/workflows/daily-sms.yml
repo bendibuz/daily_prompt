@@ -27,4 +27,5 @@ jobs:
         run: |
           echo "${{ secrets.GOOGLE_CREDS_BASE64 }}" | base64 --decode > google-creds.json
       - name: Send SMS
-        run: python -m app.jobs.send_daily_sms.py
+        # run: python -m app.jobs.send_daily_sms.py
+        run: pass

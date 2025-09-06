@@ -1,2 +1,5 @@
 google-creds.json
 google-creds-base64.txt
+.env
+venv/
+
