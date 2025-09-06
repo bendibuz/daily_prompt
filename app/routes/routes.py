@@ -12,9 +12,10 @@ def root_response():
     return("Hello World!")
 
 @app.post("/user_response/")
-def handle_response(response: UserMessage):
+def handle_response(response):
     try:
-        print(response.message)
+        print("Got a message!")
+        print(response)
         # save_user_response(response)
     except Exception as e:
         raise(e)
