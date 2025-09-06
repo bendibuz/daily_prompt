@@ -2,3 +2,6 @@ fastapi[standard]
 firebase_admin
 twilio
 firebase
+uvicorn
+pydantic
+pydantic_settings

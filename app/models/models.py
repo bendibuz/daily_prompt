@@ -3,9 +3,8 @@ from typing import Optional
 
 @dataclass
 class User:
-    user_id: str
+    display_name: str
     password: str
-    timestamp_setup: str
     phone_number: str
     email: str
 
