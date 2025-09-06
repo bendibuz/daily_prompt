@@ -1,7 +1,8 @@
 from app.services.messaging_service import save_user_response
 from app.models.models import User, UserMessage, Goal
 from twilio.twiml.messaging_response import MessagingResponse
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from main import app
 
 router = APIRouter()
 
@@ -12,14 +13,16 @@ from app.services.firebase_service import create_user_v2
 def root_response():
     return("Hello World!")
 
-@app.post("/user_response/")
-def handle_response(response):
-    try:
-        print("Got a message!")
-        print(response)
-        # save_user_response(response)
-    except Exception as e:
-        raise(e)
+@app.post("/webhook/sms")
+async def receive_sms(request: Request):
+    form_data = await request.form()
+    
+    phone_number = form_data.get("From")
+    message_body = form_data.get("Body")
+    
+    print(f"Message from {phone_number}: {message_body}")
+    
+    return {"status": "received"}
 
 # Add goals for the day
 @router.post("/daily-goals/")
