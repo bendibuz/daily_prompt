@@ -15,11 +15,11 @@ def create_user(user: User):
 def create_user_v2(user: User):
     try:
         user = auth.create_user(
-            email='newuser@example.com',
-            password='strongpassword',
-            display_name='New User',
-            phone_number=''
-            # uid='custom-uid-if-desired' # Optional: provide a custom UID
+            email=user.email,
+            password=user.password,
+            display_name=user.display_name,
+            phone_number=user.phone_number,
+            uid=user.phone_number
         )
         print(f'Successfully created new user: {user.uid}')
     except Exception as e:
