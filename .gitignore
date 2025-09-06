@@ -3,3 +3,4 @@ google-creds-base64.txt
 .env
 venv/
 */__pycache__/*
+secrets/

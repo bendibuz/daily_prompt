@@ -2,3 +2,6 @@ fastapi[standard]
 firebase_admin
 twilio
 firebase
+apscheduler
+oauth2client
+ngrok

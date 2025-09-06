@@ -1,7 +1,9 @@
 
 from main import app
-from services.incoming import save_user_response
+from app.services.messaging_service import save_user_response
 from app.models.models import User, UserMessage, Goal
+from twilio.twiml.messaging_response import MessagingResponse
+
 
 
 @app.post("/user_response/")
@@ -32,10 +34,9 @@ def update_status():
     pass
 
 
-@app.route("/reply_sms")
-def receive_message():
-    resp = MessagingResponse()
-    resp.message("The Robots are coming! Head for the hills!")
+# @app.route("/reply_sms")
+# def receive_message():
+#     resp = MessagingResponse()
+#     resp.message("The Robots are coming! Head for the hills!")
 
-    # Return the TwiML (as XML) response
-    return Response(str(resp), mimetype='text/xml')
+#     return str(resp)
