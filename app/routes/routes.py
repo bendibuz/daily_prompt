@@ -8,10 +8,16 @@ router = APIRouter()
 
 from app.services.firebase_service import create_user_v2
 
-@router.post("/user_response/")
-def handle_response(response: UserMessage):
+@app.get("/")
+def root_response():
+    return("Hello World!")
+
+@app.post("/user_response/")
+def handle_response(response):
     try:
-        save_user_response(response)
+        print("Got a message!")
+        print(response)
+        # save_user_response(response)
     except Exception as e:
         raise(e)
 
