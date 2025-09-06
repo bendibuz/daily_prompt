@@ -6,8 +6,8 @@ class Settings(BaseSettings):
     TWILIO_ACCOUNT_SID: str | None = None
     TWILIO_AUTH_TOKEN: str | None = None
     TWILIO_FROM_NUMBER: str | None = None
-    TWILIO_NUMBER: Field(..., description="Twilio phone number")
-    MY_PHONE_NUMBER: Field(..., description="My phone number")
+    TWILIO_NUMBER: str = Field(..., description="Twilio phone number")
+    MY_PHONE_NUMBER: str = Field(..., description="My phone number")
 
     class Config:
         env_file = ".env"
