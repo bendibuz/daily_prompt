@@ -2,6 +2,9 @@ from dataclasses import asdict, dataclass
 from app.models.models import User, UserMessage, Goal
 from firebase_admin import firestore
 from twilio.twiml.messaging_response import MessagingResponse
+from app.adapters.firebase_client import get_firebase_client
+
+get_firebase_client()
 db = firestore.client()
 
 def parse_response(response: UserMessage):

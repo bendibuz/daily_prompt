@@ -2,6 +2,9 @@ google-creds.json
 google-creds-base64.txt
 .env
 venv/
-*/__pycache__/*
+app/models/__pycache__/*
 secrets/
 app/adapters/__pycache__/*
+app/routes/__pycache__/
+app/services/__pycache__/
+app/__pycache__/

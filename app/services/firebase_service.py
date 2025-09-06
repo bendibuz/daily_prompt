@@ -1,7 +1,8 @@
-from firebase_admin import firestore, auth
-
+from firebase_admin import firestore, auth, initialize_app, credentials
 from app.models.models import User
+from app.adapters.firebase_client import get_firebase_client
 
+get_firebase_client()
 db = firestore.client()
 
 def create_user(user: User):

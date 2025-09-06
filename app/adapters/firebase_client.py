@@ -7,3 +7,8 @@ def init_firebase():
     cred = credentials.Certificate(settings.GOOGLE_APPLICATION_CREDENTIALS)
     app = firebase_admin.initialize_app(cred)
     return app
+
+firebase_client = init_firebase()
+
+def get_firebase_client():
+    return firebase_client
