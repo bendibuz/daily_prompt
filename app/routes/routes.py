@@ -14,7 +14,8 @@ def root_response():
 @app.post("/user_response/")
 def handle_response(response: UserMessage):
     try:
-        save_user_response(response)
+        print(response.message)
+        # save_user_response(response)
     except Exception as e:
         raise(e)
 
