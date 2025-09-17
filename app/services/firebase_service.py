@@ -1,6 +1,9 @@
 from firebase_admin import firestore, auth, initialize_app, credentials
 from app.models.models import User
 from app.adapters.firebase_client import get_firebase_client
+from models import Goal
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 get_firebase_client()
 db = firestore.client()
@@ -25,5 +28,47 @@ def create_user_v2(user: User):
     except Exception as e:
         print(f'Error creating user: {e}')
 
+
+# Goals
+
+
+def dicts_to_goals(items) -> list[Goal]:
+    goals = []
+    for g in items or []:
+        # Be forgiving about missing fields
+        goals.append(
+            Goal(
+                goal_text=g.get("goal_text", ""),
+                points=int(g.get("points", 0)),
+                complete=bool(g.get("complete", False)),
+            )
+        )
+    return goals
+
+
 def create_goals_entry():
     pass
+
+def get_today_goals_for_user(user: User) -> list[Goal]:
+    """
+    Fetch today's goals for the given user.
+     users/{phone}/days/{YYYY-MM-DD} (field: "goals": [ {...}, ... ])
+    Returns a list[Goal]. Empty list if nothing is found.
+    """
+    tz = ZoneInfo("America/Chicago")
+    date_key = datetime.now(tz).date().isoformat()
+
+    # Path 1: nested under the user doc
+    user_day_ref = (
+        db.collection("users")
+          .document(user.phone_number)
+          .collection("days")
+          .document(date_key)
+    )
+    snap = user_day_ref.get()
+    if snap.exists:
+        data = snap.to_dict() or {}
+        return dicts_to_goals(data.get("goals"))
+
+    # Nothing found
+    return []

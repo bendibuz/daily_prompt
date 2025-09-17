@@ -3,11 +3,22 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 from main import app
 from jobs import send_message
+from models import Goal
+from typing import List
 from apscheduler.schedulers.background import BackgroundScheduler  # runs tasks in the background
 from apscheduler.triggers.cron import CronTrigger  # allows us to specify a recurring time for execution
 
-def build_afternoon_message(goals):
+# def get_goal_statuses():
+    
 
+def build_afternoon_message(goals: List[Goal]):
+    goals_list = []
+    for goal in goals:
+        goal_status =  "Complete" if goal.complete else "Incomplete"
+        goals_list.append(f"{goal.goal_text}: {goal_status} ({goal.points})")
+    goals_message = "\n".join(goals_list)
+    message = f"Hello! Checking in on your goals status. Send me any updates! \n {goals_message}"
+    return message
 #TODO: 
 
 
