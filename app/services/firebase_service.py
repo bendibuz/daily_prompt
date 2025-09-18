@@ -1,7 +1,6 @@
 from firebase_admin import firestore, auth, initialize_app, credentials
-from app.models.models import User
+from app.models.models import User, Goal
 from app.adapters.firebase_client import get_firebase_client
-from models import Goal
 from datetime import datetime
 from zoneinfo import ZoneInfo
 

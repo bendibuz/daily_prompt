@@ -3,7 +3,7 @@ from datetime import datetime
 from contextlib import asynccontextmanager
 from app.main import app
 from jobs import send_message
-from models import Goal
+from app.models.models import Goal
 from typing import List
 from apscheduler.schedulers.background import BackgroundScheduler  # runs tasks in the background
 from apscheduler.triggers.cron import CronTrigger  # allows us to specify a recurring time for execution
