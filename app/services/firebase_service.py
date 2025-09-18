@@ -50,7 +50,7 @@ def dicts_to_goals(items) -> list[Goal]:
 def create_goals_entry():
     pass
 
-def get_today_goals_for_user(user: User) -> list[Goal]:
+def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
     """
     Fetch today's goals for the given user.
      users/{phone}/days/{YYYY-MM-DD} (field: "goals": [ {...}, ... ])
