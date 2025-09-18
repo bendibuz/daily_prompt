@@ -30,4 +30,4 @@ def save_user_goals(response: UserMessage):
 
 
 def handle_incoming_message(message):
-     
+     pass
