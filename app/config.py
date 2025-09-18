@@ -1,11 +1,12 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from typing import Optional
 
 class Settings(BaseSettings):
-    GOOGLE_APPLICATION_CREDENTIALS: str | None = None
-    TWILIO_ACCOUNT_SID: str | None = None
-    TWILIO_AUTH_TOKEN: str | None = None
-    TWILIO_FROM_NUMBER: str | None = None
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_FROM_NUMBER: Optional[str] = None
     TWILIO_NUMBER: str = Field(..., description="Twilio phone number")
     MY_PHONE_NUMBER: str = Field(..., description="My phone number")
 

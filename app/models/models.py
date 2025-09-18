@@ -34,22 +34,22 @@ class UserDoc:
 
 
 # ---- Read/aggregate view (not written verbatim to Firestore) ----
-# @dataclass
-# class User(UserDoc):
+@dataclass
+class User(UserDoc):
     # Materialize recent days when needed. Do NOT persist this list on the user doc.
-    # days: List[Day] = field(default_factory=list)
+    days: List[Day] = field(default_factory=list)
 
 # Optional: explicit phone→uid index to resolve inbound SMS quickly
-# @dataclass
-# class PhoneIndex:
-#     phone_number: str   # E.164, e.g., "+18475551212"
-#     uid: str
-#     created_at: Optional[datetime] = None
+@dataclass
+class PhoneIndex:
+    phone_number: str   # E.164, e.g., "+18475551212"
+    uid: str
+    created_at: Optional[datetime] = None
 
-# # Inbound Twilio message
-# @dataclass
-# class UserMessage:
-#     message: str
-#     timestamp: datetime                       # tz-aware if possible
-#     phone_number: str                          # REQUIRED (for lookup)
-#     uid: Optional[str] = None                  # filled after phone→uid resolution
+# Inbound Twilio message
+@dataclass
+class UserMessage:
+    message: str
+    timestamp: datetime                       # tz-aware if possible
+    phone_number: str                          # REQUIRED (for lookup)
+    uid: Optional[str] = None                  # filled after phone→uid resolution

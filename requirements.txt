@@ -7,4 +7,4 @@ oauth2client
 ngrok
 uvicorn
 pydantic
-pydantic_settings
+pydantic-settings
