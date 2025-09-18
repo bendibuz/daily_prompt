@@ -21,9 +21,9 @@ def create_user_v2(user: UserDoc):
             email=user.email,
             password=user.password,
             display_name=user.display_name,
-            phone_number=user.phone_number,
-            created_at = datetime.now,
-            updated_at = datetime.now
+            phone_number=user.phone_number
+            # created_at = datetime.now,
+            # updated_at = datetime.now
         )
         print(f'Successfully created new user for phone number {user.phone_number}')
     except Exception as e:
