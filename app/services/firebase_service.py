@@ -25,7 +25,7 @@ def create_user(user: UserDoc):
         phone_number=formatted_phone,
     )
     uid = rec.uid
-
+    print(uid)
     # 3) Create Firestore doc using uid as the document ID
     now = datetime.now(timezone.utc)
     user_doc = {
@@ -44,6 +44,7 @@ def create_user(user: UserDoc):
         db.collection("users").document(uid).set(user_doc)
     except Exception as e:
         # rollback to avoid dangling Auth users without a Firestore profile
+        print(f"Failed with exception {e}")
         try:
             auth.delete_user(uid)
         finally:
