@@ -24,13 +24,13 @@ class Day:
 #How user data is stored in the backend
 @dataclass
 class UserDoc:
-    uid: str
-    display_name: str
+    display_name: Optional[str]
     email: str
+    password: str
     phone_number: str
-    created_at: Optional[datetime] = None
-    updated_at: Optional[datetime] = None
-    timezone: str = "America/Chicago"    
+    created_at: Optional[datetime] = datetime.now
+    updated_at: Optional[datetime] = datetime.now
+    # timezone: str = "America/Chicago"    
 
 
 # ---- Read/aggregate view (not written verbatim to Firestore) ----

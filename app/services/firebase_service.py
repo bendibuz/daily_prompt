@@ -1,29 +1,31 @@
 from firebase_admin import firestore, auth, initialize_app, credentials
-from app.models.models import User, Goal
+from app.models.models import UserDoc, Goal
 from app.adapters.firebase_client import get_firebase_client
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+
 get_firebase_client()
 db = firestore.client()
 
-def create_user(user: User):
-    # TODO: validate user phone number here?
-    # TODO: validate any other user info here
-    doc_ref = db.collection('users').document(user.phone_number)
-    doc_ref.set(user)
-    pass
+# def create_user(user: User):
+#     # TODO: validate user phone number here?
+#     # TODO: validate any other user info here
+#     doc_ref = db.collection('users').document(user.phone_number)
+#     doc_ref.set(user)
+#     pass
 
-def create_user_v2(user: User):
+def create_user_v2(user: UserDoc):
     try:
         user = auth.create_user(
             email=user.email,
             password=user.password,
             display_name=user.display_name,
             phone_number=user.phone_number,
-            uid=user.phone_number
+            created_at = datetime.now,
+            updated_at = datetime.now
         )
-        print(f'Successfully created new user: {user.uid}')
+        print(f'Successfully created new user for phone number {user.phone_number}')
     except Exception as e:
         print(f'Error creating user: {e}')
 
