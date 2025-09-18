@@ -17,7 +17,8 @@ db = firestore.client()
 
 def create_user_v2(user: UserDoc):
     try:
-        user = auth.create_user(
+        input_phone = user.phone_number
+        rec = auth.create_user(
             email=user.email,
             password=user.password,
             display_name=user.display_name,
@@ -25,7 +26,8 @@ def create_user_v2(user: UserDoc):
             # created_at = datetime.now,
             # updated_at = datetime.now
         )
-        print(f'Successfully created new user for phone number {user.phone_number}')
+        print(f'Successfully created new user for phone number {input_phone}')
+        return rec
     except Exception as e:
         print(f'Error creating user: {e}')
 

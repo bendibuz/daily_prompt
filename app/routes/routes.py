@@ -52,3 +52,4 @@ def receive_message():
 @router.post("/create_user")
 def create_user(user: User):
     create_user_v2(user)
+    return {"OK":True}

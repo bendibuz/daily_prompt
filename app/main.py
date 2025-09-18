@@ -1,8 +1,19 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import app.routes.routes as routes
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[ "http://localhost:5173", "http://localhost:3000" ],
+    allow_credentials=True,
+    allow_methods=["*"],   # <- includes OPTIONS
+    allow_headers=["*"],
+)
+
+
 app.include_router(routes.router)
 
 
