@@ -33,11 +33,11 @@ def create_user(user: UserDoc):
         "email": user.email,
         "display_name": user.display_name,
         "phone_number": formatted_phone,
-        "created_at": now,
-        "updated_at": now,
+        # "created_at": now,
+        # "updated_at": now,
         # put app-specific defaults here
-        "status": "active",
-        "onboarding_complete": False,
+        # "status": "active",
+        # "onboarding_complete": False,
     }
 
     try:
