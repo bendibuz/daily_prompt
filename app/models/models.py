@@ -27,8 +27,8 @@ class UserDoc:
     uid: str
     display_name: str
     email: str
-    timezone: str = "America/Chicago"    
     phone_number: str
+    timezone: str = "America/Chicago"    
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

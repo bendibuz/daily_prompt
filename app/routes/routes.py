@@ -18,7 +18,7 @@ async def receive_sms(request: Request):
     form_data = await request.form()
     phone_number = form_data.get("From")
     message_body = form_data.get("Body")
-    handle_incoming_message(message_body)
+    # handle_incoming_message(message_body)
     print(f"Message from {phone_number}: {message_body}")
     
     return {"status": "received"}
