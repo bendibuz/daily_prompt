@@ -3,6 +3,7 @@ from app.models.models import UserDoc, Goal
 from app.adapters.firebase_client import get_firebase_client
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from phonenumberfmt import format_phone_number
 
 
 get_firebase_client()
@@ -15,14 +16,19 @@ db = firestore.client()
 #     doc_ref.set(user)
 #     pass
 
+def standardize_phone(phone_number):
+    formatted = format_phone_number(phone_number)
+    return formatted
+
 def create_user_v2(user: UserDoc):
     try:
         input_phone = user.phone_number
+        formatted_phone=standardize_phone(input)
         rec = auth.create_user(
             email=user.email,
             password=user.password,
             display_name=user.display_name,
-            phone_number=user.phone_number
+            phone_number=formatted_phone
             # created_at = datetime.now,
             # updated_at = datetime.now
         )

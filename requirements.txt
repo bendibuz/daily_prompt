@@ -8,3 +8,4 @@ ngrok
 uvicorn
 pydantic
 pydantic-settings
+py-phone-number-fmt
