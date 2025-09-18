@@ -5,7 +5,7 @@ from fastapi import APIRouter, Request
 
 router = APIRouter()
 
-from app.services.firebase_service import create_user_v2
+from app.services.firebase_service import create_user
 
 @router.get("/")
 def root_response():
@@ -52,5 +52,5 @@ def receive_message():
 @router.post("/create_user")
 def create_user(user: User):
     print(user)
-    create_user_v2(user)
+    create_user(user)
     return {"OK":True}

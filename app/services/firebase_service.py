@@ -1,7 +1,7 @@
 from firebase_admin import firestore, auth, initialize_app, credentials
 from app.models.models import UserDoc, Goal
 from app.adapters.firebase_client import get_firebase_client
-from datetime import datetime
+from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from phonenumberfmt import format_phone_number
 
@@ -9,33 +9,47 @@ from phonenumberfmt import format_phone_number
 get_firebase_client()
 db = firestore.client()
 
-# def create_user(user: User):
-#     # TODO: validate user phone number here?
-#     # TODO: validate any other user info here
-#     doc_ref = db.collection('users').document(user.phone_number)
-#     doc_ref.set(user)
-#     pass
-
 def standardize_phone(phone_number):
     formatted = format_phone_number(phone_number, "US")
     return formatted
 
-def create_user_v2(user: UserDoc):
+def create_user(user: UserDoc):
+    # 1) Normalize input
+    formatted_phone = standardize_phone(user.phone_number) if user.phone_number else None
+
+    # 2) Create Auth user
+    rec = auth.create_user(
+        email=user.email,
+        password=user.password,
+        display_name=user.display_name,
+        phone_number=formatted_phone,
+    )
+    uid = rec.uid
+
+    # 3) Create Firestore doc using uid as the document ID
+    now = datetime.now(timezone.utc)
+    user_doc = {
+        "uid": uid,
+        "email": user.email,
+        "display_name": user.display_name,
+        "phone_number": formatted_phone,
+        "created_at": now,
+        "updated_at": now,
+        # put app-specific defaults here
+        "status": "active",
+        "onboarding_complete": False,
+    }
+
     try:
-        input_phone = user.phone_number
-        formatted_phone=standardize_phone(input)
-        rec = auth.create_user(
-            email=user.email,
-            password=user.password,
-            display_name=user.display_name,
-            phone_number=formatted_phone
-            # created_at = datetime.now,
-            # updated_at = datetime.now
-        )
-        print(f'Successfully created new user for phone number {input_phone}')
-        return rec
+        db.collection("users").document(uid).set(user_doc)
     except Exception as e:
-        print(f'Error creating user: {e}')
+        # rollback to avoid dangling Auth users without a Firestore profile
+        try:
+            auth.delete_user(uid)
+        finally:
+            raise RuntimeError(f"Failed to create Firestore user doc; rolled back Auth user. Details: {e}")
+
+    return {"uid": uid}
 
 
 # Goals
