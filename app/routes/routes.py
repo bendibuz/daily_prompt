@@ -2,9 +2,9 @@ from app.services.messaging_service import save_user_response
 from app.models.models import User, UserMessage, Goal
 from twilio.twiml.messaging_response import MessagingResponse
 from fastapi import APIRouter, Request
-from main import app
+from app.main import app
 
-# router = APIRouter()
+router = APIRouter()
 
 
 from app.services.firebase_service import create_user_v2
@@ -44,12 +44,12 @@ def update_status():
     pass
 
 
-# @app.route("/reply_sms")
-# def receive_message():
-#     resp = MessagingResponse()
-#     resp.message("The Robots are coming! Head for the hills!")
+@app.route("/reply_sms")
+def receive_message():
+    resp = MessagingResponse()
+    resp.message("The Robots are coming! Head for the hills!")
 
-#     return str(resp)
+    return str(resp)
 
 @app.post("/create_user")
 def create_user(user: User):
