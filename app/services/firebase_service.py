@@ -17,7 +17,7 @@ db = firestore.client()
 #     pass
 
 def standardize_phone(phone_number):
-    formatted = format_phone_number(phone_number)
+    formatted = format_phone_number(phone_number, "US")
     return formatted
 
 def create_user_v2(user: UserDoc):
