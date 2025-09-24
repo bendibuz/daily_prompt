@@ -9,7 +9,7 @@ class Goal:
     goal_text: str
     points: int = 0
     complete: bool = False
-    created_at: Optional[datetime] = None
+    created_at: Optional[datetime] = datetime.now
     updated_at: Optional[datetime] = None
 
 @dataclass
@@ -17,7 +17,7 @@ class Day:
     datekey: str = ""
     total_points: int = 0
     completed_points: int = 0
-    created_at: Optional[datetime] = None
+    created_at: Optional[datetime] = datetime.now
     updated_at: Optional[datetime] = None
     goals: List[Goal] = field(default_factory=list)
 
@@ -30,7 +30,8 @@ class UserDoc:
     phone_number: str
     created_at: Optional[datetime] = datetime.now
     updated_at: Optional[datetime] = datetime.now
-    # timezone: str = "America/Chicago"    
+    timezone: str = "America/Chicago" 
+    activated: bool = False
 
 
 # ---- Read/aggregate view (not written verbatim to Firestore) ----

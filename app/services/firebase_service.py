@@ -13,31 +13,25 @@ def standardize_phone(phone_number):
     formatted = format_phone_number(phone_number, "US")
     return formatted
 
-def create_user(user: UserDoc):
-    # 1) Normalize input
+def add_new_user(user: UserDoc):
     formatted_phone = standardize_phone(user.phone_number) if user.phone_number else None
-
-    # 2) Create Auth user
     rec = auth.create_user(
         email=user.email,
         password=user.password,
         display_name=user.display_name,
         phone_number=formatted_phone,
     )
+
     uid = rec.uid
-    print(uid)
-    # 3) Create Firestore doc using uid as the document ID
     now = datetime.now(timezone.utc)
     user_doc = {
         "uid": uid,
         "email": user.email,
         "display_name": user.display_name,
         "phone_number": formatted_phone,
-        # "created_at": now,
-        # "updated_at": now,
-        # put app-specific defaults here
-        # "status": "active",
-        # "onboarding_complete": False,
+        "created_at": now,
+        "updated_at": now,
+        "activated": False,
     }
 
     try:
@@ -52,10 +46,6 @@ def create_user(user: UserDoc):
 
     return {"uid": uid}
 
-
-# Goals
-
-
 def dicts_to_goals(items) -> list[Goal]:
     goals = []
     for g in items or []:
@@ -69,8 +59,11 @@ def dicts_to_goals(items) -> list[Goal]:
         )
     return goals
 
-
-def create_goals_entry():
+def create_goals_entry(goals: dict):
+    goals = dicts_to_goals(goals)
+    for goal in goals:
+        new_goal = db.collection("goals").add(goal)
+        print(f"Added goal with id {new_goal.id}")
     pass
 
 def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
@@ -82,17 +75,15 @@ def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
     tz = ZoneInfo("America/Chicago")
     date_key = datetime.now(tz).date().isoformat()
 
-    # Path 1: nested under the user doc
     user_day_ref = (
         db.collection("users")
           .document(user.phone_number)
           .collection("days")
           .document(date_key)
     )
-    snap = user_day_ref.get()
-    if snap.exists:
-        data = snap.to_dict() or {}
+    doc = user_day_ref.get()
+    if doc.exists:
+        data = doc.to_dict() or {}
         return dicts_to_goals(data.get("goals"))
 
-    # Nothing found
     return []

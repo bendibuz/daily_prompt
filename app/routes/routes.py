@@ -5,12 +5,14 @@ from fastapi import APIRouter, Request
 
 router = APIRouter()
 
-from app.services.firebase_service import create_user
+from app.services.firebase_service import add_new_user
 
+# Test route
 @router.get("/")
 def root_response():
     return("Hello World!")
 
+#Incoming SMS webhook
 @router.post("/webhook/sms")
 async def receive_sms(request: Request):
     form_data = await request.form()
@@ -21,36 +23,38 @@ async def receive_sms(request: Request):
     
     return {"status": "received"}
 
-# Add goals for the day
-@router.post("/daily-goals/")
-def create_daily_goals(goals: list[Goal]):
-    for goal in goals:
-        try:
-            return {"message" : "Goal posted"}
-        except Exception as e:
-            raise(e)
-        
-# Check the status of today's goals for prompt to user midday
-@router.get("/status/")
-def check_status():
-    return {"goal statuses"}
-
-
-# Update status based on user feedback
-@router.put("/status/")
-def update_status():
-    pass
-
-
-@router.route("/reply_sms")
-def receive_message():
-    resp = MessagingResponse()
-    resp.message("The Robots are coming! Head for the hills!")
-
-    return str(resp)
-
 @router.post("/create_user")
 def create_user(user: User):
     print(user)
-    create_user(user)
+    add_new_user(user)
     return {"OK":True}
+
+
+# Not needed?
+# Add goals for the day
+# @router.post("/daily-goals/")
+# def create_daily_goals(goals: list[Goal]):
+#     for goal in goals:
+#         try:
+#             return {"message" : "Goal posted"}
+#         except Exception as e:
+#             raise(e)
+        
+# # Check the status of today's goals for prompt to user midday
+# @router.get("/status/")
+# def check_status():
+#     return {"goal statuses"}
+
+
+# # Update status based on user feedback
+# @router.put("/status/")
+# def update_status():
+#     pass
+
+
+# @router.route("/reply_sms")
+# def receive_message():
+#     resp = MessagingResponse()
+#     resp.message("The Robots are coming! Head for the hills!")
+
+#     return str(resp)
