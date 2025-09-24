@@ -1,7 +1,7 @@
-from app.services.messaging_service import save_user_response
-from app.models.models import User, UserMessage, Goal
+from app.services.messaging_service import handle_incoming_message, build_twilml_for_result
+from app.models.models import UserDoc
 from twilio.twiml.messaging_response import MessagingResponse
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, Response
 
 router = APIRouter()
 
@@ -15,46 +15,23 @@ def root_response():
 #Incoming SMS webhook
 @router.post("/webhook/sms")
 async def receive_sms(request: Request):
-    form_data = await request.form()
-    phone_number = form_data.get("From")
-    message_body = form_data.get("Body")
-    # handle_incoming_message(message_body)
-    print(f"Message from {phone_number}: {message_body}")
-    
-    return {"status": "received"}
+    form = await request.form()
+    phone_number = form.get("From")
+    message_body = form.get("Body")
+    to_number = form.get("To")
+    message_sid = form.get("MessageSid")
+
+    result = handle_incoming_message(
+        message=message_body,
+        phone_number=phone_number,
+        to_number=to_number,
+        sid=message_sid
+    )
+
+    twiml = build_twilml_for_result(result)
+    return Response(content=twiml, media_type="application/xml")
 
 @router.post("/create_user")
-def create_user(user: User):
-    print(user)
-    add_new_user(user)
-    return {"OK":True}
-
-
-# Not needed?
-# Add goals for the day
-# @router.post("/daily-goals/")
-# def create_daily_goals(goals: list[Goal]):
-#     for goal in goals:
-#         try:
-#             return {"message" : "Goal posted"}
-#         except Exception as e:
-#             raise(e)
-        
-# # Check the status of today's goals for prompt to user midday
-# @router.get("/status/")
-# def check_status():
-#     return {"goal statuses"}
-
-
-# # Update status based on user feedback
-# @router.put("/status/")
-# def update_status():
-#     pass
-
-
-# @router.route("/reply_sms")
-# def receive_message():
-#     resp = MessagingResponse()
-#     resp.message("The Robots are coming! Head for the hills!")
-
-#     return str(resp)
+def create_user(user: UserDoc):  # align type with your service
+    from app.services.firebase_service import add_new_user
+    return add_new_user(user)
