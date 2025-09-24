@@ -49,8 +49,8 @@ class UserDoc:
     user_id: str                 # Firestore UID or UUID
     display_name: Optional[str]
     email: Optional[str]         # store only if you actually use it
-    phones: List[UserPhone] = field(default_factory=list)
     timezone: str = "America/Chicago"
+    phones: List[UserPhone] = field(default_factory=list)
     activated: bool = False
     created_at: datetime = field(default_factory=utcnow)
     updated_at: datetime = field(default_factory=utcnow)
@@ -59,6 +59,6 @@ class UserDoc:
 @dataclass
 class UserMessage:
     message: str
-    timestamp: datetime = field(default_factory=utcnow)
     phone_number: str
+    timestamp: datetime = field(default_factory=utcnow)
     uid: Optional[str] = None
