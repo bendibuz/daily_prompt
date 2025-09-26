@@ -50,7 +50,7 @@ class UserDoc:
     display_name: Optional[str]
     email: Optional[str]         # store only if you actually use it
     timezone: str = "America/Chicago"
-    phones: List[UserPhone] = field(default_factory=list)
+    phones: List[str] = field(default_factory=list)
     activated: bool = False
     created_at: datetime = field(default_factory=utcnow)
     updated_at: datetime = field(default_factory=utcnow)

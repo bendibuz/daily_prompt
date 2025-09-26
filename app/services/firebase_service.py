@@ -1,14 +1,11 @@
 # firebase_service.py (key fixes)
 from firebase_admin import firestore, auth
 from app.models.models import UserDoc, Goal
-from app.adapters.firebase_client import get_firebase_client
 from datetime import datetime, timezone
 import phonenumbers
 from dataclasses import asdict
 
-get_firebase_client()
-db = firestore.client()
-
+from app.adapters.firebase_client import get_firebase_client
 get_firebase_client()
 db = firestore.client()
 
@@ -72,7 +69,7 @@ def dicts_to_goals(items) -> list[Goal]:
         )
     return goals
 
-def create_goals_entry(goals: dict):
+def create_goals_entry(goals: list[dict]):
     goals = dicts_to_goals(goals)
     for goal in goals:
         db.collection("goals").add(asdict(goal))

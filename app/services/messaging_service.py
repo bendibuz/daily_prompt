@@ -1,30 +1,16 @@
 # messaging_service.py
 from dataclasses import asdict, dataclass, field
 from typing import Optional, List, Dict, Any
-from datetime import datetime, timezone
-
-import phonenumbers
 from firebase_admin import firestore
 from twilio.twiml.messaging_response import MessagingResponse
 
-from app.models.models import UserDoc, UserMessage, Goal
 from app.adapters.firebase_client import get_firebase_client
+
+from app.utilities import utcnow, normalize_to_e164
 
 # --- init --------------------------------------------------------------------
 get_firebase_client()
 db = firestore.client()
-
-
-# --- helpers -----------------------------------------------------------------
-def utcnow() -> datetime:
-    return datetime.now(timezone.utc)
-
-def normalize_to_e164(raw: str, default_region: str = "US") -> str:
-    """Normalize any incoming phone string to E.164 or raise ValueError."""
-    num = phonenumbers.parse(raw, default_region)
-    if not phonenumbers.is_valid_number(num):
-        raise ValueError(f"Invalid phone number: {raw}")
-    return phonenumbers.format_number(num, phonenumbers.PhoneNumberFormat.E164)
 
 # --- lookups ---------------------------------------------------------------------
 def resolve_user_id_by_phone(e164: str) -> Optional[str]:
@@ -148,13 +134,23 @@ def handle_incoming_message(
     Main entrypoint called by your route handler.
     Returns a dict describing routing/next-steps; routes can decide TwiML.
     """
-    # 1) normalize phone
     e164 = normalize_to_e164(phone_number, default_region=default_region)
 
-    # 2) resolve user
+    # Handle STOP/UNSUBSCRIBE keywords (per CTIA guidelines)
+    text_lower = (message or "").strip().lower()
+    if text_lower in {"stop", "unsubscribe", "cancel", "quit"}:
+        db.collection("subscriptions").document(e164).set({"status": "unsubscribed", "updated_at": utcnow().isoformat()}, merge=True)
+        return {
+            "user_id": resolve_user_id_by_phone(e164),
+            "from_number": e164,
+            "message_id": save_raw_message(message_body=message, from_number=e164, user_id=None, to_number=to_number, sid=sid),
+            "response_id": None,
+            "next_actions": [],
+            "parsed": {}
+        }
+    
     user_id = resolve_user_id_by_phone(e164)
 
-    # 3) log raw message (idempotent if sid provided)
     message_id = save_raw_message(
         message_body=message,
         from_number=e164,
@@ -163,14 +159,12 @@ def handle_incoming_message(
         sid=sid,
     )
 
-    # 4) parse
     parsed = {}
     try:
         parsed = parse_response_text(message)
     except Exception:
         parsed = {}
 
-    # 5) store structured interpretation
     response_id = save_user_response(
         user_id=user_id,
         parsed=parsed,
@@ -178,7 +172,6 @@ def handle_incoming_message(
         from_number=e164,
     )
 
-    # 6) compute simple next actions your route can use
     next_actions: List[str] = []
     if user_id is None:
         next_actions.append("start_user_claim_flow")  # reply asking to link/verify
@@ -201,7 +194,6 @@ def handle_incoming_message(
         "parsed": parsed,
     }
 
-# --- (optional) TwiML helper your route CAN call ------------------------------
 def build_twilml_for_result(result: Dict[str, Any]) -> str:
     """
     Small helper if you prefer to return TwiML directly from the route.
@@ -210,7 +202,7 @@ def build_twilml_for_result(result: Dict[str, Any]) -> str:
     resp = MessagingResponse()
 
     if result["user_id"] is None:
-        resp.message("We don’t recognize this number yet. Reply YES to link your phone, or visit the app to sign in.")
+        resp.message("Hello! Welcome to Digidoit. Looks like its your first time here. Reply YES to link this phone to a new account!")
         return str(resp)
 
     actions = result.get("next_actions", [])
@@ -219,7 +211,7 @@ def build_twilml_for_result(result: Dict[str, Any]) -> str:
     if "create_or_update_goals" in actions:
         titles = [g["title"] for g in parsed.get("goals", [])]
         if titles:
-            resp.message("Got it! I logged these goals:\n- " + "\n- ".join(titles))
+            resp.message("Got it! Goals logged:\n- " + "\n- ".join(titles))
 
     if "mark_goals_done" in actions:
         dones = parsed.get("done", [])
@@ -229,8 +221,8 @@ def build_twilml_for_result(result: Dict[str, Any]) -> str:
     if actions == ["send_help_text"]:
         resp.message("Try sending goals like: 'goal: workout 30m; goal: read 10 pages' or mark done like: 'done: workout'.")
 
-    # If no messages were added above, add a generic ack
+    # If no messages were added above, add a generic thank you
     if not resp.messages:
-        resp.message("Thanks! Logged your message.")
+        resp.message("Sorry, didn't quite get that. Send 'help' for tips.")
 
     return str(resp)
