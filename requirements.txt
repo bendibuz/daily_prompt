@@ -10,3 +10,4 @@ pydantic
 pydantic-settings
 py-phone-number-fmt
 dotenv
+levenshtein

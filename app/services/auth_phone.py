@@ -31,8 +31,6 @@ twilio_client = _get_twilio_client()
 verify_sid = _get_verify_sid()
 
 
-# --- Verify helpers ----------------------------------------------------------
-
 def start_phone_verification(phone_number: str) -> None:
     twilio_client.verify.v2.services(verify_sid).verifications.create(
         to=phone_number, channel="sms"
@@ -81,7 +79,8 @@ def bind_phone_to_user(phone_e164: str, user_id: str) -> None:
     @firestore.transactional
     def tx_fn(tx):
         phone_doc = tx.get(phone_ref)
-        if phone_doc.exists:
+        print(phone_doc)
+        if phone_doc and phone_doc.exists:
             data = phone_doc.to_dict() or {}
             existing_uid = data.get("user_id")
             # simplest safe policy: if bound to a different user and not released, block

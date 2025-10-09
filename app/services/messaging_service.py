@@ -1,45 +1,115 @@
 # messaging_service.py
-from dataclasses import asdict, dataclass, field
 from typing import Optional, List, Dict, Any
+from enum import Enum
 from firebase_admin import firestore
 from twilio.twiml.messaging_response import MessagingResponse
-
 from app.adapters.firebase_client import get_firebase_client
-
 from app.utilities import utcnow, normalize_to_e164
+from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
+from app.services.utilities.parser import parse_message
 
-# --- init --------------------------------------------------------------------
+
+# Receive a message
+# Check if the user exists based on phone number
+# If they don't exist, prompt for signup 🌞
+# If they do exist, parse the response and add actions
+# Commit the actions
+# Build a response
+# Send response
+# Done!
+
 get_firebase_client()
 db = firestore.client()
 
-# --- lookups ---------------------------------------------------------------------
+def build_response(reply_messages):
+    concat = "\n".join(str(m) for m in reply_messages)
+    resp = MessagingResponse()
+    resp.message(concat)
+    return resp
+
+def prompt_signup(**kwargs):
+    resp = MessagingResponse()
+    reply = resp.message("Welcome! Reply YES to link this phone to a new account.")
+    return reply
+    # return Response(content=str(resp), media_type="application/xml")
+
+def signup(**kwargs):
+    phone_number = kwargs.get("phone_number")
+    e164 = normalize_to_e164(phone_number)
+    user_id = get_or_create_user_for_phone(e164)
+    bind_phone_to_user(e164, user_id)
+    resp = MessagingResponse()
+    reply = resp.message("You are all set! You can now text me goals and updates any time.")
+    return reply
+    # return Response(content=str(resp), media_type="application/xml")
+        
+def stop_service(phone_number, user_id, **kwargs):
+    pass
+def help_request(phone_number, user_id, **kwargs):
+    pass
+def send_help(phone_number, user_id, **kwargs):
+    pass
+
+# These two can be added together into one message
+def set_goals(phone_number, user_id, **kwargs):
+    pass
+def mark_done(phone_number, user_id, **kwargs):
+    pass
+
+# def unknown(phone_number, user_id, **kwargs):
+#     pass
+
+class Actions(Enum):
+    SIGNUP = signup
+    PROMPT_SIGNUP = prompt_signup
+    STOP = stop_service
+    HELP_REQ = help_request
+    SEND_HELP = send_help
+    SET_GOALS = set_goals
+    MARK_DONE = mark_done
+    # UNKNOWN = unknown
+
+def commit_actions(phone_number, user_id, actions: List[Actions], **kwargs) -> bool:
+    reply_messages = []
+    for action in actions:
+        try:
+            reply = Actions[action.name].value(phone_number, user_id, **kwargs)
+        except Exception as e:
+            reply = None
+        if reply:
+            reply_messages.append(reply)
+    return reply_messages
+
+
+# 🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲 Beatlemania
 def resolve_user_id_by_phone(e164: str) -> Optional[str]:
-    """
-    Preferred: O(1) lookup in phone_bindings/{+E164} → { user_id }.
-    Fallback: users where 'phones' array contains the E.164 string.
-    """
-    # 1) phone_bindings collection (single doc read)
-    pb_ref = db.document(f"phone_bindings/{e164}")
-    pb_doc = pb_ref.get()
-    if pb_doc.exists:
-        data = pb_doc.to_dict() or {}
+    binding_ref = db.document(f"phone_bindings/{e164}")
+    print(binding_ref)
+    binding_doc = binding_ref.get()
+    print(binding_doc)
+
+    # Indexed shortcut
+    if binding_doc.exists:
+        data = binding_doc.to_dict() or {}
+        print(data)
         uid = data.get("user_id")
         if uid:
             return uid
-
-    # 2) fallback: users with phones array (array-contains requires exact string)
+    
+    # Slower route
     snap = (
         db.collection("users")
         .where("phones", "array_contains", e164)
         .limit(1)
         .get()
     )
+
     if snap:
         return snap[0].id  # assuming docId == uid
 
     return None
 
-# --- persistence --------------------------------------------------------------
+# 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 Ladybug
 def save_raw_message(
     message_body: str,
     from_number: str,
@@ -48,10 +118,7 @@ def save_raw_message(
     to_number: Optional[str] = None,
     sid: Optional[str] = None,
 ) -> str:
-    """
-    Persist the raw inbound message (immutable log).
-    If you pass Twilio MessageSid, we use it as the doc id for idempotency.
-    """
+
     doc = {
         "body": message_body,
         "from": from_number,
@@ -63,7 +130,6 @@ def save_raw_message(
     }
 
     if sid:
-        # Idempotent write
         ref = db.collection("messages").document(sid)
         if not ref.get().exists:
             ref.set(doc)
@@ -73,9 +139,6 @@ def save_raw_message(
         return ref.id
 
 def save_user_response(user_id: Optional[str], parsed: Dict[str, Any], *, source_message_sid: Optional[str], from_number: str) -> str:
-    """
-    Save the structured interpretation (separate from raw 'messages').
-    """
     payload = {
         "user_id": user_id,
         "from_number": from_number,
@@ -87,41 +150,7 @@ def save_user_response(user_id: Optional[str], parsed: Dict[str, Any], *, source
     _, ref = db.collection("user_responses").add(payload)
     return ref.id
 
-# --- parsing ------------------------------------------------------------------
-def parse_response_text(text: str) -> Dict[str, Any]:
-    """
-    Very simple DSL:
-      - Split on ';'
-      - Trim whitespace, drop empties
-      - Recognize optional prefixes: 'done:', 'goal:', 'note:'
-    """
-    raw_items = [s.strip() for s in (text or "").split(";")]
-    items = [s for s in raw_items if s]
 
-    goals: List[Dict[str, Any]] = []
-    notes: List[str] = []
-    done: List[str] = []
-
-    for item in items:
-        low = item.lower()
-        if low.startswith("done:"):
-            done.append(item[5:].strip())
-        elif low.startswith("goal:"):
-            goals.append({"title": item[5:].strip(), "status": "new"})
-        elif low.startswith("note:"):
-            notes.append(item[5:].strip())
-        else:
-            goals.append({"title": item, "status": "new"})
-
-    return {
-        "goals": goals,
-        "done": done,
-        "notes": notes,
-        "item_count": len(items),
-        "parser_version": "v1",
-    }
-
-# --- high-level orchestrator --------------------------------------------------
 def handle_incoming_message(
     message: str,
     phone_number: str,
@@ -130,24 +159,9 @@ def handle_incoming_message(
     sid: Optional[str] = None,           # Twilio MessageSid if available
     default_region: str = "US",
 ) -> Dict[str, Any]:
-    """
-    Main entrypoint called by your route handler.
-    Returns a dict describing routing/next-steps; routes can decide TwiML.
-    """
+    
     e164 = normalize_to_e164(phone_number, default_region=default_region)
-
-    # Handle STOP/UNSUBSCRIBE keywords (per CTIA guidelines)
     text_lower = (message or "").strip().lower()
-    if text_lower in {"stop", "unsubscribe", "cancel", "quit"}:
-        db.collection("subscriptions").document(e164).set({"status": "unsubscribed", "updated_at": utcnow().isoformat()}, merge=True)
-        return {
-            "user_id": resolve_user_id_by_phone(e164),
-            "from_number": e164,
-            "message_id": save_raw_message(message_body=message, from_number=e164, user_id=None, to_number=to_number, sid=sid),
-            "response_id": None,
-            "next_actions": [],
-            "parsed": {}
-        }
     
     user_id = resolve_user_id_by_phone(e164)
 
@@ -160,8 +174,9 @@ def handle_incoming_message(
     )
 
     parsed = {}
+
     try:
-        parsed = parse_response_text(message)
+        parsed = parse_message(message)
     except Exception:
         parsed = {}
 
@@ -172,33 +187,37 @@ def handle_incoming_message(
         from_number=e164,
     )
 
-    next_actions: List[str] = []
-    if user_id is None:
-        next_actions.append("start_user_claim_flow")  # reply asking to link/verify
-    else:
-        has_goals = bool(parsed.get("goals"))
-        has_done = bool(parsed.get("done"))
-        if has_goals:
-            next_actions.append("create_or_update_goals")
-        if has_done:
-            next_actions.append("mark_goals_done")
-        if not (has_goals or has_done):
-            next_actions.append("send_help_text")
+    next_actions: List[Actions] = []
 
-    return {
-        "user_id": user_id,
-        "from_number": e164,
-        "message_id": message_id,
-        "response_id": response_id,
-        "next_actions": next_actions,
-        "parsed": parsed,
-    }
+    if user_id is None:
+        next_actions.append(Actions.PROMPT_SIGNUP)  # reply asking to link/verify
+    else:
+        bool(parsed.get("signup")) and next_actions.append(Actions.SIGNUP)
+        bool(parsed.get("goals")) and next_actions.append(Actions.SET_GOALS)
+        bool(parsed.get("done")) and next_actions.append(Actions.MARK_DONE)
+        if len(next_actions) == 0 or parsed == {}:
+            next_actions.append(Actions.HELP_REQ)
+
+    reply_messages = commit_actions(e164, user_id, next_actions)
+    
+    if reply_messages == []:
+        resp = MessagingResponse()
+        resp.message("Sorry, didn't quite get that. Send 'help' for tips.")
+        return resp
+    else:
+        compiled_response = build_response(reply_messages)
+        return compiled_response
+
+    # return {
+    #     "user_id": user_id,
+    #     "from_number": e164,
+    #     "message_id": message_id,
+    #     "response_id": response_id,
+    #     "next_actions": next_actions,
+    #     "parsed": parsed,
+    # }
 
 def build_twilml_for_result(result: Dict[str, Any]) -> str:
-    """
-    Small helper if you prefer to return TwiML directly from the route.
-    Adjust copy to your tone/UX.
-    """
     resp = MessagingResponse()
 
     if result["user_id"] is None:
@@ -222,7 +241,30 @@ def build_twilml_for_result(result: Dict[str, Any]) -> str:
         resp.message("Try sending goals like: 'goal: workout 30m; goal: read 10 pages' or mark done like: 'done: workout'.")
 
     # If no messages were added above, add a generic thank you
-    if not resp.messages:
+    if not resp.message:
         resp.message("Sorry, didn't quite get that. Send 'help' for tips.")
 
     return str(resp)
+
+
+
+# Optional: subscription keywords before anything else
+        # lower = body.lower()
+        # if lower in {"stop", "unsubscribe", "cancel", "quit"}:
+        #     # mark unsubscribed if you track it; still ack per carrier rules
+        #     resp = MessagingResponse()
+        #     resp.message("You are unsubscribed. Reply START to re-subscribe.")
+        #     return Response(content=str(resp), media_type="application/xml", status_code=200)
+        # if lower in {"start", "unstop"}:
+            # fall through; also good place to flip a subscription flag back on
+            # pass
+        # if lower == "resend":
+            # if you add Verify later, trigger resend here
+            # resp = MessagingResponse()
+            # resp.message("If you were verifying, we have resent your code.")
+            # return Response(content=str(resp), media_type="application/xml", status_code=200)
+
+
+# existing_user_id = resolve_user_identifier_by_phone(e164)
+#         if existing_user_id is None:
+#             

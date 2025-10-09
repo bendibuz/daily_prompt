@@ -62,3 +62,12 @@ class UserMessage:
     phone_number: str
     timestamp: datetime = field(default_factory=utcnow)
     uid: Optional[str] = None
+
+@dataclass
+class MessageActions:
+    help: bool = False
+    unsubscribe: bool = False
+    signup: bool = False
+    mark_done: bool = False
+    set_goal: List[str] = field(default_factory=list)
+    
