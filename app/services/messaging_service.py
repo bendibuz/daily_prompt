@@ -186,17 +186,17 @@ def handle_incoming_message(
         source_message_sid=sid,
         from_number=e164,
     )
+    next_actions = parse_message(message)
+    # next_actions: List[Actions] = []
 
-    next_actions: List[Actions] = []
-
-    if user_id is None:
-        next_actions.append(Actions.PROMPT_SIGNUP)  # reply asking to link/verify
-    else:
-        bool(parsed.get("signup")) and next_actions.append(Actions.SIGNUP)
-        bool(parsed.get("goals")) and next_actions.append(Actions.SET_GOALS)
-        bool(parsed.get("done")) and next_actions.append(Actions.MARK_DONE)
-        if len(next_actions) == 0 or parsed == {}:
-            next_actions.append(Actions.HELP_REQ)
+    # if user_id is None:
+    #     next_actions.append(Actions.PROMPT_SIGNUP)  # reply asking to link/verify
+    # else:
+    #     parsed.get("signup") and next_actions.append(Actions.SIGNUP)
+    #     parsed.get("goals") and next_actions.append(Actions.SET_GOALS)
+    #     parsed.get("done") and next_actions.append(Actions.MARK_DONE)
+    #     if len(next_actions) == 0 or parsed == {}:
+    #         next_actions.append(Actions.HELP_REQ)
 
     reply_messages = commit_actions(e164, user_id, next_actions)
     

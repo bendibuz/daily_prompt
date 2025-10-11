@@ -79,7 +79,7 @@ async def receive_sms(request: Request):
     except Exception as e:
         log.exception("Unhandled error in /webhook/sms")
         resp = MessagingResponse()
-        resp.message("We hit a snag processing your message. Please try again.")
+        resp.message("😵‍💫 Something went wrong...")
         return Response(content=str(resp), media_type="application/xml", status_code=200)
 
 @router.post("/create_user")
