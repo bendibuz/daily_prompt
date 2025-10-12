@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from pydantic.dataclasses import dataclass, Field
 from typing import Optional
 from typing import List
 from datetime import datetime, timezone
@@ -12,7 +12,7 @@ class Goal:
     goal_text: str
     points: int = 0
     complete: bool = False
-    created_at: Optional[datetime] = field(default_factory=utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utcnow)
     updated_at: Optional[datetime] = None
 
 @dataclass
@@ -20,9 +20,9 @@ class Day:
     datekey: str = ""
     total_points: int = 0
     completed_points: int = 0
-    created_at: Optional[datetime] = field(default_factory=utcnow)
+    created_at: Optional[datetime] = Field(default_factory=utcnow)
     updated_at: Optional[datetime] = None
-    goals: List[Goal] = field(default_factory=list)
+    goals: List[Goal] = Field(default_factory=list)
 
 
 @dataclass
@@ -31,17 +31,17 @@ class PhoneBinding:  # reverse index: phone -> user
     e164: str
     user_id: str                 # your UID
     verified: bool = False
-    bound_at: datetime = field(default_factory=utcnow)
+    bound_at: datetime = Field(default_factory=utcnow)
     released_at: Optional[datetime] = None
     last_seen: Optional[datetime] = None
-    labels: List[str] = field(default_factory=list)
+    labels: List[str] = Field(default_factory=list)
 
 @dataclass
 class UserPhone:
     e164: str
     verified: bool = False
     label: Optional[str] = None
-    added_at: datetime = field(default_factory=utcnow)
+    added_at: datetime = Field(default_factory=utcnow)
     last_seen: Optional[datetime] = None
 
 @dataclass
@@ -50,17 +50,17 @@ class UserDoc:
     display_name: Optional[str]
     email: Optional[str]         # store only if you actually use it
     timezone: str = "America/Chicago"
-    phones: List[str] = field(default_factory=list)
+    phones: List[str] = Field(default_factory=list)
     activated: bool = False
-    created_at: datetime = field(default_factory=utcnow)
-    updated_at: datetime = field(default_factory=utcnow)
+    created_at: datetime = Field(default_factory=utcnow)
+    updated_at: datetime = Field(default_factory=utcnow)
 
 # Inbound Twilio message
 @dataclass
 class UserMessage:
     message: str
     phone_number: str
-    timestamp: datetime = field(default_factory=utcnow)
+    timestamp: datetime = Field(default_factory=utcnow)
     uid: Optional[str] = None
 
 @dataclass
@@ -68,5 +68,5 @@ class MessageActions:
     help: bool = False
     unsubscribe: bool = False
     signup: bool = False
-    mark_done: List[str] = field(default_factory=list)
-    new_goals: List[str] = field(default_factory=list)
+    mark_done: List[str] = Field(default_factory=list)
+    new_goals: List[str] = Field(default_factory=list)

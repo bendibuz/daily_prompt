@@ -73,32 +73,36 @@ def get_or_create_user_for_phone(phone_e164: str, display_name: Optional[str] = 
             user_ref.set({"phones": list(phones), "updated_at": now}, merge=True)
     return uid
 
+@firestore.transactional
+def tx_fn(tx, phone_ref, user_ref, phone_e164: str, user_id: str) -> None:
+    phone_doc = phone_ref.get(transaction=tx)   # ✅ DocumentSnapshot
+    user_doc = user_ref.get(transaction=tx)     # ✅ DocumentSnapshot
+    # print(f'Existing phone doc: {phone_doc}, exists={phone_doc.exists}')
+
+    if phone_doc.exists:
+        data = phone_doc.to_dict() or {}
+        existing_uid = data.get("user_id")
+        if existing_uid and existing_uid != user_id and not data.get("released_at"):
+            raise ValueError("Phone number already bound to another user")
+
+    tx.set(phone_ref, {
+        "user_id": user_id,
+        "verified": True,
+        "bound_at": firestore.SERVER_TIMESTAMP,
+        "released_at": None,
+        "last_seen": firestore.SERVER_TIMESTAMP,
+        "labels": ["primary"]
+    }, merge=True)
+
+    phones = set((user_doc.to_dict() or {}).get("phones") or [])
+    if phone_e164 not in phones:
+        phones.add(phone_e164)
+        tx.set(user_ref, {"phones": list(phones), "updated_at": firestore.SERVER_TIMESTAMP}, merge=True)
+
+
 def bind_phone_to_user(phone_e164: str, user_id: str) -> None:
     phone_ref = database.collection("phone_bindings").document(phone_e164)
     user_ref = database.collection("users").document(user_id)
-    @firestore.transactional
-    def tx_fn(tx):
-        phone_doc = tx.get(phone_ref)
-        print(phone_doc)
-        if phone_doc and phone_doc.exists:
-            data = phone_doc.to_dict() or {}
-            existing_uid = data.get("user_id")
-            # simplest safe policy: if bound to a different user and not released, block
-            if existing_uid and existing_uid != user_id and not data.get("released_at"):
-                raise ValueError("Phone number already bound to another user")
-        tx.set(phone_ref, {
-            "user_id": user_id,
-            "verified": True,
-            "bound_at": firestore.SERVER_TIMESTAMP,
-            "released_at": None,
-            "last_seen": firestore.SERVER_TIMESTAMP,
-            "labels": ["primary"]
-        }, merge=True)
-        # ensure user doc has phone listed
-        user_doc = tx.get(user_ref)
-        phones = set((user_doc.to_dict() or {}).get("phones") or [])
-        if phone_e164 not in phones:
-            phones.add(phone_e164)
-            tx.set(user_ref, {"phones": list(phones), "updated_at": firestore.SERVER_TIMESTAMP}, merge=True)
+    print(f'📞 Binding {phone_e164} to user {user_id}')
     tx = database.transaction()
-    tx_fn(tx)
+    response = tx_fn(tx, phone_ref, user_ref, phone_e164, user_id)   # ✅ pass tx as first arg

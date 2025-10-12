@@ -59,7 +59,7 @@ def parse_message(message: str) -> MessageActions:
 
     # Special cases
     if stripped in {"yes", "signup", "sign up"}:
-        parsed_actions.yes = True
+        parsed_actions.signup = True
         return parsed_actions
     if stripped in {"stop", "unsubscribe", "end"}:
         parsed_actions.unsubscribe = True

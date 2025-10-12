@@ -3,10 +3,11 @@ from twilio.twiml.messaging_response import MessagingResponse
 from fastapi import APIRouter, Request, Response, HTTPException
 from app.services.messaging_service import (
     handle_incoming_message, 
-    build_twilml_for_result,
+    # build_twilml_for_result,
 )
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.utilities import normalize_to_e164
+from app.services.utilities.arduino_blink import blink_led as arduino_blink
 import os
 from twilio.request_validator import RequestValidator
 import logging
@@ -48,6 +49,7 @@ async def validate_twilio_request(request: Request):
 @router.post("/webhook/sms")
 async def receive_sms(request: Request):
     try:
+        arduino_blink(3)
         form = await validate_twilio_request(request)
         raw_from = form.get("From", "")
         body = (form.get("Body") or "").strip()
@@ -68,9 +70,49 @@ async def receive_sms(request: Request):
             to_number=to_number,
             sid=message_sid,
         )
+        print(f'🚀 Result: {result}')
+        # twiml = build_twilml_for_result(result)
+        return Response(content=str(result), media_type="application/xml", status_code=200)
+        # return str(result)
 
-        twiml = build_twilml_for_result(result)
-        return Response(content=twiml, media_type="application/xml", status_code=200)
+    except HTTPException as he:
+        resp = MessagingResponse()
+        resp.message("Request could not be authenticated.")
+        return Response(content=str(resp), media_type="application/xml", status_code=he.status_code)
+    except Exception as e:
+        log.exception("Unhandled error in /webhook/sms")
+        resp = MessagingResponse()
+        resp.message("😵‍💫 Something went wrong...")
+        return Response(content=str(resp), media_type="application/xml", status_code=200)
+
+@router.post("/testpath")
+async def test_receive_sms(body: str = ""):
+    try:
+        arduino_blink(3)
+        # form = await validate_twilio_request(request)
+        raw_from = "+18478587030"
+        body = body.strip()
+        to_number = "Tester"
+        message_sid = "SMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+        try:
+            e164 = normalize_to_e164(raw_from)
+        except Exception:
+            resp = MessagingResponse()
+            resp.message("We could not read your phone number. Please try again.")
+            log.warning("Bad From: %r sid=%r", raw_from, message_sid)
+            return Response(content=str(resp), media_type="application/xml", status_code=200)
+
+        result = handle_incoming_message(
+            message=body,
+            phone_number=e164,
+            to_number=to_number,
+            sid=message_sid,
+        )
+        print(f'🚀 Result: {result}')
+        # twiml = build_twilml_for_result(result)
+        return Response(content=str(result), media_type="application/xml", status_code=200)
+        # return str(result)
 
     except HTTPException as he:
         resp = MessagingResponse()
