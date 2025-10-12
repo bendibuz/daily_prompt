@@ -18,6 +18,40 @@ from app.services.utilities.parser import parse_message
 # Send response
 # Done!
 
+
+'''
+def handle_incoming_message(msg, phone, *, sid=None, to_number=None, region="US"):
+    e164 = normalize_to_e164(phone, default_region=region)
+    user_id = resolve_user_id_by_phone(e164)
+
+    # 1) persist raw (idempotent if sid)
+    save_raw_message(msg, e164, user_id=user_id, to_number=to_number, sid=sid)
+
+    # 2) parse once
+    try:
+        parsed = parse_message(msg)       # -> MessageActions
+    except Exception:
+        parsed = None
+    parsed_dict = to_dict(parsed)
+
+    # 3) persist parsed
+    save_user_response(user_id=user_id, parsed=parsed_dict, source_message_sid=sid, from_number=e164)
+
+    # 4) route (pure)
+    actions = route_actions(user_id=user_id, parsed=parsed)   # returns List[Actions]
+
+    # 5) commit (side effects live here)
+    replies = commit_actions(
+        e164, user_id, actions,
+        parsed=parsed_dict, raw_message=msg, source_sid=sid
+    )
+
+    # 6) render
+    if not replies:
+        return build_response(["Sorry, didn’t catch that. Send 'help' for tips."])
+    return build_response(replies)
+'''
+
 get_firebase_client()
 db = firestore.client()
 
@@ -160,12 +194,10 @@ def handle_incoming_message(
     default_region: str = "US",
 ) -> Dict[str, Any]:
     
-    e164 = normalize_to_e164(phone_number, default_region=default_region)
-    text_lower = (message or "").strip().lower()
-    
+    e164 = normalize_to_e164(phone_number, default_region=default_region)  
     user_id = resolve_user_id_by_phone(e164)
 
-    message_id = save_raw_message(
+    save_raw_message(
         message_body=message,
         from_number=e164,
         user_id=user_id,
@@ -173,30 +205,31 @@ def handle_incoming_message(
         sid=sid,
     )
 
-    parsed = {}
-
     try:
         parsed = parse_message(message)
     except Exception:
         parsed = {}
 
-    response_id = save_user_response(
+    save_user_response(
         user_id=user_id,
         parsed=parsed,
         source_message_sid=sid,
         from_number=e164,
     )
-    next_actions = parse_message(message)
-    # next_actions: List[Actions] = []
 
-    # if user_id is None:
-    #     next_actions.append(Actions.PROMPT_SIGNUP)  # reply asking to link/verify
-    # else:
-    #     parsed.get("signup") and next_actions.append(Actions.SIGNUP)
-    #     parsed.get("goals") and next_actions.append(Actions.SET_GOALS)
-    #     parsed.get("done") and next_actions.append(Actions.MARK_DONE)
-    #     if len(next_actions) == 0 or parsed == {}:
-    #         next_actions.append(Actions.HELP_REQ)
+    next_actions = parsed
+    next_actions: List[Actions] = []
+
+    # actions = route_actions(user_id, parsed)
+
+    if user_id is None:
+        next_actions.append(Actions.PROMPT_SIGNUP)  # reply asking to link/verify
+    else:
+        parsed.get("signup") and next_actions.append(Actions.SIGNUP)
+        parsed.get("goals") and next_actions.append(Actions.SET_GOALS)
+        parsed.get("done") and next_actions.append(Actions.MARK_DONE)
+        if len(next_actions) == 0 or parsed == {}:
+            next_actions.append(Actions.HELP_REQ)
 
     reply_messages = commit_actions(e164, user_id, next_actions)
     
@@ -245,26 +278,3 @@ def build_twilml_for_result(result: Dict[str, Any]) -> str:
         resp.message("Sorry, didn't quite get that. Send 'help' for tips.")
 
     return str(resp)
-
-
-
-# Optional: subscription keywords before anything else
-        # lower = body.lower()
-        # if lower in {"stop", "unsubscribe", "cancel", "quit"}:
-        #     # mark unsubscribed if you track it; still ack per carrier rules
-        #     resp = MessagingResponse()
-        #     resp.message("You are unsubscribed. Reply START to re-subscribe.")
-        #     return Response(content=str(resp), media_type="application/xml", status_code=200)
-        # if lower in {"start", "unstop"}:
-            # fall through; also good place to flip a subscription flag back on
-            # pass
-        # if lower == "resend":
-            # if you add Verify later, trigger resend here
-            # resp = MessagingResponse()
-            # resp.message("If you were verifying, we have resent your code.")
-            # return Response(content=str(resp), media_type="application/xml", status_code=200)
-
-
-# existing_user_id = resolve_user_identifier_by_phone(e164)
-#         if existing_user_id is None:
-#             

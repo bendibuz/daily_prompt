@@ -1,101 +1,87 @@
 import re
 # from levenshtein import distance
 from app.models.models import MessageActions
-from typing import List
+from typing import List, Dict, Any
 
-'''
-Notes on formatting:
-We want to allow multiple actions in one message
-We can build a MessageActions dictionary with the actions as keys and the relevant strings as values
-Then further process the strings accordingly
-
-Goal format: "<goal description> [optional<: int(points)>]
-    
-Done format: "done <goal description>"
-Done will need to compare goal against existing goal descriptions by levenshtein distance
-
-First check if the message starts with "done" -- if not, parse as a new goal.
-TODO: Allow multiple goals/done in one message, separated by ; or , or |
-'''
+# Accepts: " - 3", ": 3", " x3", "(3)", "[3]", "{3}", "3", "3 pt", "3 pts", "3 points" at the END
+POINTS_RE = re.compile(
+    r"""(?:\s*(?:[-:x]\s*|[\(\[\{]\s*))?      # optional delimiter or opening bracket
+        (\d+)\s*                              # the number
+        (?:pts?|points?)?                     # optional unit
+        [\)\]\}]?\s*$                         # optional closing bracket then end
+    """,
+    re.IGNORECASE | re.VERBOSE
+)
 
 def split_on_delimiters(message: str) -> List[str]:
     delimiters = [',', ';', '|']
     regex_pattern = '|'.join(map(re.escape, delimiters))
     return [part.strip() for part in re.split(regex_pattern, message) if part.strip()]
 
+def split_on_newlines(message: str) -> List[str]:
+    return [line.strip() for line in message.splitlines() if line.strip()]
+
 def strip_all_symbols(message: str) -> str:
     # Remove all non-alphanumeric characters except spaces
     return re.sub(r'[^a-zA-Z0-9\s]', '', message)
 
-# def find_distance(str1, str2):
-#     distance = levenshtein.distance(str1, str2)
-#     print(f"Distance between '{str1}' and '{str2}' is {distance}")
-#     return distance
 
-def extract_completed(message: str) -> List[str]:
-    '''
-    Message in format:
-    done: <goal1>, <goal2>, <goal3>
-    or
-    done: <goal1>
-    done: <goal2> ...
-    '''
-    goals = []
-    # Split the message on common delimiters
-    parts = split_on_delimiters(message)
-    print(parts)
-    # Remove the leading "done" from the first part if present
-    if parts and parts[0].lower().startswith("done"):
-        parts[0] = parts[0][4:].strip()  # Remove "done" and any leading spaces
-    
+def extract_completed(part: str) -> str:
+    """
+    Extract the goal text from a 'done' line.
+    Handles 'done', 'done:', 'DONE -', etc., preserves punctuation in the goal.
+    """
+    m = re.match(r'^\s*done\b[:\-\s]*', part, flags=re.IGNORECASE)
+    if not m:
+        # Fallback: if it somehow slips through, return trimmed original
+        return part.strip()
+    return part[m.end():].strip()
 
-    return goals
+def extract_new_goal(part: str) -> Dict[str, int | str]:
+    """
+    Parse a goal line and optional trailing points indicator.
+    Defaults to 1 point if none found.
+    """
+    text = part.strip()
+    points = 1
+    m = POINTS_RE.search(text)
+    if m:
+        points = int(m.group(1))
+        text = text[:m.start()].rstrip()
+    # Collapse inner whitespace
+    text = re.sub(r'\s+', ' ', text)
+    return {"goal_text": text, "points": points}
 
-def extract_new_goals(message: str) -> List[dict]:
-    '''
-    Message in format:
-    <goal1>: <points>, <goal2>: <points>, <goal3>: <points>
-    or
-    <goal1>: <points>
-    <goal2>: <points> ...
-    '''
-    goals = []
-    # Split the message on common delimiters
-    parts = split_on_delimiters(message)
-
-    for part in parts:
-        # Allow :, ;, | or - as separators for points
-        # If there is not points at the end, default to 1
-        match = re.match(r'^(.*?)(?:\s*[:;|\-]\s*(\d+))?$', part)        
-        if match:
-            goal_description = match.group(1).strip()
-            points = int(match.group(2)) if match.group(2) else 1
-            goals.append({"description": goal_description, "points": points})
-        else:
-            goals.append({"description": part, "points": 1})
-
-    return goals
-
-def parse_message(message: str) -> str:
+def parse_message(message: str) -> MessageActions:
     parsed_actions = MessageActions()
-    stripped = strip_all_symbols(message.lower())
 
-    # Special cases for exact matches
-    if stripped in ["yes","signup","sign up"]: # Special case for "yes"
+    stripped = re.sub(r'[^a-z0-9\s]', '', message.lower())  # cheap normalize for commands
+
+    # Special cases
+    if stripped in {"yes", "signup", "sign up"}:
         parsed_actions.yes = True
         return parsed_actions
-    if stripped in ["stop","unsubscribe","end"]: # Special case for "stop"
+    if stripped in {"stop", "unsubscribe", "end"}:
         parsed_actions.unsubscribe = True
         return parsed_actions
-    if stripped == ["help"]: # Special case for "help"
+    if stripped == "help":
         parsed_actions.help = True
         return parsed_actions
-    
-    if stripped.startswith("done"):
-        goals_to_mark = extract_completed(message)
-        parsed_actions.mark_done(goals_to_mark)
-    else:
-        new_goals = extract_new_goals(message)
-        parsed_actions.new_goal = new_goals
-        
+
+    new_goals: List[Dict[str, int | str]] = []
+    completed: List[str] = []
+
+    # Split only on newlines per your examples
+    for part in (line.strip() for line in message.splitlines() if line.strip()):
+        if re.match(r'^\s*done\b', part, flags=re.IGNORECASE):
+            done_text = extract_completed(part)
+            if done_text:  # ignore empty 'done' lines
+                completed.append(done_text)
+        else:
+            goal = extract_new_goal(part)
+            if goal["goal_text"]:
+                new_goals.append(goal)
+
+    parsed_actions.new_goals = new_goals
+    parsed_actions.mark_done = completed
     return parsed_actions

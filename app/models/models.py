@@ -69,4 +69,4 @@ class MessageActions:
     unsubscribe: bool = False
     signup: bool = False
     mark_done: List[str] = field(default_factory=list)
-    new_goal: dict = field(default_factory=dict)
+    new_goals: List[str] = field(default_factory=list)
