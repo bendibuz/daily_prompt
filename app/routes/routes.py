@@ -7,11 +7,11 @@ from app.services.messaging_service import (
 )
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.utilities import normalize_to_e164
-from app.services.utilities.arduino_blink import blink_led as arduino_blink
 import os
 from twilio.request_validator import RequestValidator
 import logging
 from app.config import settings
+import asyncio
 
 router = APIRouter()
 log = logging.getLogger("routes.sms")
@@ -49,7 +49,7 @@ async def validate_twilio_request(request: Request):
 @router.post("/webhook/sms")
 async def receive_sms(request: Request):
     try:
-        arduino_blink(3)
+        asyncio.create_task(request.app.state.svc.blink_led(2))
         form = await validate_twilio_request(request)
         raw_from = form.get("From", "")
         body = (form.get("Body") or "").strip()
@@ -86,9 +86,9 @@ async def receive_sms(request: Request):
         return Response(content=str(resp), media_type="application/xml", status_code=200)
 
 @router.post("/testpath")
-async def test_receive_sms(body: str = ""):
+async def test_receive_sms(request: Request, body: str = ""):
     try:
-        arduino_blink(3)
+        asyncio.create_task(request.app.state.svc.blink_led(2))
         # form = await validate_twilio_request(request)
         raw_from = "+18478587030"
         body = body.strip()
@@ -128,3 +128,4 @@ async def test_receive_sms(body: str = ""):
 def create_user(user: UserDoc):
     from app.services.firebase_service import add_new_user
     return add_new_user(user)
+

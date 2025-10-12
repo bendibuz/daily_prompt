@@ -3,9 +3,28 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import app.routes.routes as routes
 import os
-from app.services.utilities.button_read import listen
+from app.services.utilities.serial_service import SerialServiceAsync
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    await svc.open()
+    svc.on_button(log_button) 
+    app.state.svc = svc
+    try:
+        yield
+    finally:
+        # Shutdown
+        await svc.close()
+
+async def log_button(pressed: bool):
+    # runs on the event loop thread; keep it fast/non-blocking
+    print(f"[BTN] {'👇 PRESSED' if pressed else '🫳 RELEASED'}")
+    await svc.blink_led(1)
+
+app = FastAPI(lifespan=lifespan)
+svc = SerialServiceAsync()
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,9 +35,10 @@ app.add_middleware(
 )
 
 
+
+
 app.include_router(routes.router)
 
-listen()
 
 if __name__== "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)
