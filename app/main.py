@@ -6,25 +6,33 @@ import os
 from app.services.utilities.serial_service import SerialServiceAsync
 from contextlib import asynccontextmanager
 
+# USE_SERIAL = False
+USE_SERIAL = True
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
-    await svc.open()
-    svc.on_button(log_button) 
-    app.state.svc = svc
-    try:
-        yield
-    finally:
-        # Shutdown
-        await svc.close()
+    if USE_SERIAL:
+        print("🔌 Using serial service")
+        await svc.open()
+        svc.on_button(log_button) 
+        app.state.svc = svc
+        try:
+            yield
+        finally:
+            # Shutdown
+            await svc.close()
+    else:
+        print("🚫 Not using serial service")
 
 async def log_button(pressed: bool):
-    # runs on the event loop thread; keep it fast/non-blocking
-    print(f"[BTN] {'👇 PRESSED' if pressed else '🫳 RELEASED'}")
-    await svc.blink_led(1)
+    if USE_SERIAL:
+        print(f"[BTN] {'👇 PRESSED' if pressed else '🫳 RELEASED'}")
+        await svc.blink_led(1)
 
 app = FastAPI(lifespan=lifespan)
-svc = SerialServiceAsync()
+if USE_SERIAL:
+    svc = SerialServiceAsync()
 
 app.add_middleware(
     CORSMiddleware,

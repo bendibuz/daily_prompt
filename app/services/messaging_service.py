@@ -8,25 +8,27 @@ from app.utilities import utcnow, normalize_to_e164
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.services.utilities.parser import parse_message
 from dataclasses import asdict
+from app.services.firebase_service import create_goals_entry, get_today_goals_for_user
+from app.models.models import UserDoc, Goal
 
-
-# Receive a message
-# Check if the user exists based on phone number
-# If they don't exist, prompt for signup 🌞
-# If they do exist, parse the response and add actions
-# Commit the actions
-# Build a response
-# Send response
-# Done!
-
+not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
 
 get_firebase_client()
 db = firestore.client()
 
+def get_user_data(user_id: str) -> Optional[UserDoc]:
+    if user_id is None:
+        return not_found_msg
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        return not_found_msg
+    user_data = user_doc.to_dict() or {}
+    user = UserDoc(**user_data)
+    return user
+
 def build_response(reply_messages):
-    print(f'Building response from messages: {reply_messages}')
     concat = "\n".join(str(m) for m in reply_messages)
-    print("Concat: ", concat)
     resp = MessagingResponse()
     resp.message(str(concat))
     return resp
@@ -58,9 +60,31 @@ def send_help(phone_number, user_id, **kwargs):
 
 # These two can be added together into one message
 def set_goals(phone_number, user_id, **kwargs):
+    user = get_user_data(user_id)
+
+    goals = kwargs.get("new_goals", [])
+    try:
+        create_goals_entry(goals=goals, user=user)
+    except Exception as e:
+        print(f'⚠️ Error creating goals: {e}')
+        return "⚠️ Error saving goals. Please try again."
     return "Goals set"
+
 def mark_done(phone_number, user_id, **kwargs):
-    return "Goals completed - nice! ❤️"
+    user = get_user_data(user_id)
+    goals = kwargs.get("mark_done", [])
+    today_goals = get_today_goals_for_user(user)
+    goal_texts = [g.goal_text for g in today_goals]
+    verified_complete = []
+    for goal in goals:
+        if goal in goal_texts:
+            idx = goal_texts.index(goal)
+            today_goals[idx].complete = True
+            verified_complete.append(goal)
+    if len(verified_complete) == 0:
+        return "No matching goals found to mark as done."
+    return f"Marked as done: {', '.join(verified_complete)}"
+
 
 class Actions(Enum):
     SIGNUP = signup
@@ -72,34 +96,33 @@ class Actions(Enum):
     MARK_DONE = mark_done
     # UNKNOWN = unknown
 
-def commit_actions(phone_number, user_id, actions: List[Actions], **kwargs) -> bool:
+
+def commit_actions(phone_number, user_id, actions, **kwargs) -> bool:
+
     reply_messages = []
-    print(f'Actions: {actions} {len(actions)}')
     for action in actions:
         try:
-            reply = action(phone_number, user_id, **kwargs)
-            print(f'Action: {action}, Reply: {reply}')
+            fn = action.value if isinstance(action, Actions) else action
+            reply = fn(phone_number, user_id, **kwargs)
+            print(f'⏩ Action: {action}, ⏪ Reply: {reply}')
         except Exception as e:
-            print('⚠️ GENERATOR ERROR?', e)
+            print('⚠️ ERROR when committing actions:', e)
             reply = None
         if reply:
             reply_messages.append(reply)
 
-    print(f'Reply messages: {reply_messages}')
+    print(f'💬 Reply messages: {reply_messages}')
     return reply_messages
 
 
 # 🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲 Beatlemania
 def resolve_user_id_by_phone(e164: str) -> Optional[str]:
     binding_ref = db.document(f"phone_bindings/{e164}")
-    print(f'Binding ref: {binding_ref.path}')
     binding_doc = binding_ref.get()
-    print(f'Binding doc: {binding_doc}, exists={binding_doc.exists}')
 
     # Indexed shortcut
     if binding_doc.exists:
         data = binding_doc.to_dict() or {}
-        print(data)
         uid = data.get("user_id")
         if uid:
             return uid
@@ -193,10 +216,10 @@ def handle_incoming_message(
 
     try:
         parsed = parse_message(message)
+        actions_dict = asdict(parsed)
     except Exception:
         parsed = {}
 
-    # print(parsed.signup, parsed.new_goals, parsed.mark_done)
     save_user_response(
         user_id=user_id,
         parsed=parsed,
@@ -204,7 +227,6 @@ def handle_incoming_message(
         from_number=e164,
     )
 
-    next_actions = parsed
     next_actions: List[Actions] = []
 
     # actions = route_actions(user_id, parsed)
@@ -220,7 +242,7 @@ def handle_incoming_message(
             if len(next_actions) == 0 or parsed == {}:
                 next_actions.append(Actions.HELP_REQ)
 
-    reply_messages = commit_actions(e164, user_id, next_actions)
+    reply_messages = commit_actions(e164, user_id, next_actions, **actions_dict)
     
     if len(reply_messages) == 0:
         resp = MessagingResponse()

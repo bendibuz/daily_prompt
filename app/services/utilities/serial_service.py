@@ -82,7 +82,7 @@ class SerialServiceAsync:
             self.transport.close()
             self.transport = None
             self.protocol = None
-            print("Serial connection closed")
+            print("✅ Serial connection closed")
 
     async def reconnect(self):
         await self.close()

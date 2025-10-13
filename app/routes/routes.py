@@ -70,10 +70,8 @@ async def receive_sms(request: Request):
             to_number=to_number,
             sid=message_sid,
         )
-        print(f'🚀 Result: {result}')
-        # twiml = build_twilml_for_result(result)
+        print(f'🚀 Result: {result.message}')
         return Response(content=str(result), media_type="application/xml", status_code=200)
-        # return str(result)
 
     except HTTPException as he:
         resp = MessagingResponse()

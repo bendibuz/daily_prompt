@@ -4,6 +4,7 @@ from app.models.models import UserDoc, Goal
 from datetime import datetime, timezone
 import phonenumbers
 from dataclasses import asdict
+from zoneinfo import ZoneInfo
 
 from app.adapters.firebase_client import get_firebase_client
 get_firebase_client()
@@ -69,13 +70,16 @@ def dicts_to_goals(items) -> list[Goal]:
         )
     return goals
 
-def create_goals_entry(goals: list[dict]):
+def create_goals_entry(goals: list[dict], user: UserDoc) -> None:
     goals = dicts_to_goals(goals)
+    tz = ZoneInfo(user.timezone or "America/Chicago")
+    date_key = datetime.now(tz).date().isoformat()
+    user_day_ref = db.collection("users").document(user.user_id).collection("days").document(date_key)
     for goal in goals:
-        db.collection("goals").add(asdict(goal))
+        print(f'💾 Creating goal for user {user.user_id}: {goal}')
+        user_day_ref.collection("goals").add(asdict(goal))
 
 def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
-    from zoneinfo import ZoneInfo
     tz = ZoneInfo(user.timezone or "America/Chicago")
     date_key = datetime.now(tz).date().isoformat()
     user_day_ref = db.collection("users").document(user.user_id).collection("days").document(date_key)
