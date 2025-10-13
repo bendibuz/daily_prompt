@@ -83,8 +83,6 @@ def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
     tz = ZoneInfo(user.timezone or "America/Chicago")
     date_key = datetime.now(tz).date().isoformat()
     user_day_ref = db.collection("users").document(user.user_id).collection("days").document(date_key)
-    doc = user_day_ref.get()
-    if doc.exists:
-        data = doc.to_dict() or {}
-        return dicts_to_goals(data.get("goals"))
-    return []
+    goals_snap = user_day_ref.collection("goals").get()
+    goal_dicts = [doc.to_dict() for doc in goals_snap]
+    return dicts_to_goals(goal_dicts)

@@ -16,6 +16,11 @@ not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
 get_firebase_client()
 db = firestore.client()
 
+def strip_text(text: Optional[str]) -> Optional[str]:
+    if text is None:
+        return None
+    return text.strip().lower()
+
 def get_user_data(user_id: str) -> Optional[UserDoc]:
     if user_id is None:
         return not_found_msg
@@ -74,10 +79,12 @@ def mark_done(phone_number, user_id, **kwargs):
     user = get_user_data(user_id)
     goals = kwargs.get("mark_done", [])
     today_goals = get_today_goals_for_user(user)
-    goal_texts = [g.goal_text for g in today_goals]
+    print(f'🔥 Today goals for user {user.user_id}: {today_goals}')
+    goal_texts = [strip_text(g.goal_text) for g in today_goals]
+    print(f'🏁 Marking done for user {user.user_id}: {goals}, today goals: {goal_texts}')
     verified_complete = []
     for goal in goals:
-        if goal in goal_texts:
+        if strip_text(goal) in goal_texts:
             idx = goal_texts.index(goal)
             today_goals[idx].complete = True
             verified_complete.append(goal)
