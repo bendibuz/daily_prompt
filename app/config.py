@@ -1,20 +1,24 @@
-# config.py
+# app/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 from typing import Optional
 
 class Settings(BaseSettings):
-    # Tell pydantic-settings how to load .env
+    # Loads .env locally; Railway/Heroku-style env vars still override this.
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    GOOGLE_APPLICATION_CREDENTIALS: str = None  # path to the json file
-    TWILIO_AUTH_TOKEN: str = None
-    TWILIO_ACCOUNT_SID: str = None
+    # Firebase: prefer FIREBASE_CREDENTIALS (raw/base64 JSON).
+    FIREBASE_CREDENTIALS: Optional[str] = None     # raw JSON or base64 (recommended)
+    GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None  # file path OR raw/base64 JSON (legacy/optional)
+
+    # Twilio / misc
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_VERIFY_SID: Optional[str] = None
     TWILIO_FROM_NUMBER: Optional[str] = None
-    PORT: Optional[str] = None
+    PORT: Optional[str] = None  # Railway provides PORT
 
-    # Required vars (keep required if you want validation to fail when missing)
+    # Required vars (keep required if you want startup to fail when missing)
     TWILIO_NUMBER: str = Field(..., description="Twilio phone number")
     MY_PHONE_NUMBER: str = Field(..., description="My phone number")
 
