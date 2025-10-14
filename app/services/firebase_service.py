@@ -86,3 +86,10 @@ def get_today_goals_for_user(user: UserDoc) -> list[Goal]:
     goals_snap = user_day_ref.collection("goals").get()
     goal_dicts = [doc.to_dict() for doc in goals_snap]
     return dicts_to_goals(goal_dicts)
+
+def get_today_goal_refs(user: UserDoc) -> list[firestore.DocumentReference]:
+    tz = ZoneInfo(user.timezone or "America/Chicago")
+    date_key = datetime.now(tz).date().isoformat()
+    user_day_ref = db.collection("users").document(user.user_id).collection("days").document(date_key)
+    goals_snap = user_day_ref.collection("goals").get()
+    return [doc.reference for doc in goals_snap]

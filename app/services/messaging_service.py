@@ -8,10 +8,11 @@ from app.utilities import utcnow, normalize_to_e164
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.services.utilities.parser import parse_message
 from dataclasses import asdict
-from app.services.firebase_service import create_goals_entry, get_today_goals_for_user
+from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs
 from app.models.models import UserDoc, Goal
 
 not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
+completed_all_goals_msg = "🎊 Congrats! You've completed all your goals for today!\n Celebrate with a little treat, or text me a new goal to add more."
 
 get_firebase_client()
 db = firestore.client()
@@ -52,16 +53,24 @@ def signup(phone_number, user_id, **kwargs):
     e164 = normalize_to_e164(phone_number)
     if user_id:
         bind_phone_to_user(e164, user_id)
-        return "You are all set! You can now text me goals and updates any time."
+        return '''You are all set! You can now text me goals and updates any time.\n
+Available commands:\n
+🎯 Send the name of a goal to set a new goal\n
+✅ "Done: <goal>" to set your goal as done\n
+📋 "List" for a list of today's goals\n
+🛑 "Stop" or "Unsubscribe" to stop service\n'''
     prompt_signup(phone_number, user_id)
     # return Response(content=str(resp), media_type="application/xml")
         
 def stop_service(phone_number, user_id, **kwargs):
     return "Stop service"
 def help_request(phone_number, user_id, **kwargs):
-    return "Didn't get that... need help? Send 'help' for tips."
+    return "Didn't get that... need help? Send 'commands' for tips."
 def send_help(phone_number, user_id, **kwargs):
-    return "Available commands are x, y, z"
+    return '''🎯 Send the name of a goal to set a new goal\n
+✅ "Done: `goal name`" to set your goal as done\n
+📋 "List" for a list of today's goals\n
+🛑 "Stop" or "Unsubscribe" to stop service\n'''
 
 # These two can be added together into one message
 def set_goals(phone_number, user_id, **kwargs):
@@ -75,22 +84,83 @@ def set_goals(phone_number, user_id, **kwargs):
         return "⚠️ Error saving goals. Please try again."
     return "Goals set"
 
+
 def mark_done(phone_number, user_id, **kwargs):
+    # 1) Resolve user
     user = get_user_data(user_id)
-    goals = kwargs.get("mark_done", [])
-    today_goals = get_today_goals_for_user(user)
-    print(f'🔥 Today goals for user {user.user_id}: {today_goals}')
-    goal_texts = [strip_text(g.goal_text) for g in today_goals]
-    print(f'🏁 Marking done for user {user.user_id}: {goals}, today goals: {goal_texts}')
-    verified_complete = []
-    for goal in goals:
-        if strip_text(goal) in goal_texts:
-            idx = goal_texts.index(goal)
-            today_goals[idx].complete = True
-            verified_complete.append(goal)
-    if len(verified_complete) == 0:
+    if not isinstance(user, UserDoc):
+        return not_found_msg
+
+    # 2) Targets to mark complete (normalize with strip_text)
+    raw_targets: list[str] = kwargs.get("mark_done", []) or []
+    targets_norm: list[str] = [strip_text(t) for t in raw_targets if t]
+
+    if not targets_norm:
         return "No matching goals found to mark as done."
-    return f"Marked as done: {', '.join(verified_complete)}"
+
+    # 3) Load today's goal docs & build an index by normalized text
+    goal_refs = get_today_goal_refs(user)
+    docs = [(ref, ref.get()) for ref in goal_refs]
+    doc_rows = [(ref, snap.to_dict() or {}) for ref, snap in docs if snap.exists]
+
+    # index: norm_text -> list of (ref, stored_text, already_complete)
+    from collections import defaultdict, deque
+    index = defaultdict(deque)
+    for ref, data in doc_rows:
+        stored_text = (data.get("goal_text") or "").strip()
+        norm = strip_text(stored_text)
+        already_complete = bool(data.get("complete"))
+        # only queue incomplete goals so we don't double-mark
+        if norm:
+            index[norm].append((ref, stored_text, already_complete))
+
+    # 4) For each requested target, grab one matching (incomplete) doc (FIFO)
+    to_update = []
+    verified_labels = []  # for message
+    for norm in targets_norm:
+        bucket = index.get(norm)
+        if not bucket:
+            continue
+        # pop left until we find one not already complete
+        picked = None
+        while bucket and picked is None:
+            ref, stored_text, already_complete = bucket.popleft()
+            if not already_complete:
+                picked = (ref, stored_text)
+        if picked:
+            ref, stored_text = picked
+            to_update.append(ref)
+            verified_labels.append(stored_text)
+
+    # 5) Commit updates in a single batch
+    if not to_update:
+        return "No matching goals found to mark as done."
+
+    batch = db.batch()
+    for ref in to_update:
+        batch.update(ref, {
+            "complete": True,
+            "completed_at": firestore.SERVER_TIMESTAMP,
+        })
+    batch.commit()
+
+    return f"Marked as done: {', '.join(verified_labels)}"
+
+def list_goals(phone_number, user_id, **kwargs):
+    user = get_user_data(user_id)
+    today_goals = get_today_goals_for_user(user)
+    if not today_goals:
+        return "You have no goals set for today."
+    total_points = sum(g.points for g in today_goals)
+    completed_points = sum(g.points for g in today_goals if g.complete)
+    if total_points == completed_points:
+        return completed_all_goals_msg
+    pct_complete = round(100*completed_points/total_points)
+    goals_list = "\n".join([f"{'✓' if g.complete else '▢'} {g.goal_text} ({g.points} pt) " for g in today_goals])
+    progress_info = "Progress: " + f"{pct_complete}% ({completed_points}/{total_points} pts)"
+    normalized_earned = round(completed_points * 10 / total_points)
+    progress_bar = "Progress: " + "■" * normalized_earned + "▢" * (10 - normalized_earned)
+    return f"🎯Today's Goals\n\n{progress_bar}\n{progress_info}\n\n{goals_list}"
 
 
 class Actions(Enum):
@@ -101,6 +171,7 @@ class Actions(Enum):
     SEND_HELP = send_help
     SET_GOALS = set_goals
     MARK_DONE = mark_done
+    LIST_GOALS = list_goals
     # UNKNOWN = unknown
 
 
@@ -244,6 +315,9 @@ def handle_incoming_message(
         if phone_binding_exists is False:
             parsed.signup and next_actions.append(Actions.SIGNUP)  # reply asking to link/verify    
         else:
+            if(parsed.help): next_actions.append(Actions.SEND_HELP)
+            if(parsed.stop): next_actions.append(Actions.STOP)
+            if(parsed.list_goals): next_actions.append(Actions.LIST_GOALS)
             if(len(parsed.new_goals) > 0): next_actions.append(Actions.SET_GOALS)
             if(len(parsed.mark_done) > 0): next_actions.append(Actions.MARK_DONE)
             if len(next_actions) == 0 or parsed == {}:

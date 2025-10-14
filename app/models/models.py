@@ -66,7 +66,9 @@ class UserMessage:
 @dataclass
 class MessageActions:
     help: bool = False
-    unsubscribe: bool = False
+    stop: bool = False
     signup: bool = False
+    list_goals: bool = False
+    unsubscribe: bool = False
     mark_done: List[str] = Field(default_factory=list)
     new_goals: List[str] = Field(default_factory=list)

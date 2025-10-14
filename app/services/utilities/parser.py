@@ -62,10 +62,13 @@ def parse_message(message: str) -> MessageActions:
         parsed_actions.signup = True
         return parsed_actions
     if stripped in {"stop", "unsubscribe", "end"}:
-        parsed_actions.unsubscribe = True
+        parsed_actions.stop = True
         return parsed_actions
-    if stripped == "help":
+    if stripped in {"commands", "help"}:
         parsed_actions.help = True
+        return parsed_actions
+    if stripped == "list":
+        parsed_actions.list_goals = True
         return parsed_actions
 
     new_goals: List[Dict[str, int | str]] = []
