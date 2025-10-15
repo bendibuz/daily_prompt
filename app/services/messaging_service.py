@@ -12,7 +12,7 @@ from app.services.firebase_service import create_goals_entry, get_today_goals_fo
 from app.models.models import UserDoc, Goal
 
 not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
-completed_all_goals_msg = "🎊 Congrats! You've completed all your goals for today!\n Celebrate with a little treat, or text me a new goal to add more."
+completed_all_goals_msg = "None! 🎊 Congrats, you've completed all your goals for today!\n 🙂‍↕️ Celebrate with a little treat, or text me a new goal to add more."
 
 get_firebase_client()
 db = firestore.client()
@@ -82,7 +82,9 @@ def set_goals(phone_number, user_id, **kwargs):
     except Exception as e:
         print(f'⚠️ Error creating goals: {e}')
         return "⚠️ Error saving goals. Please try again."
-    return "Goals set"
+    today_goals = get_today_goals_for_user(user)
+    goals_list = build_goals_list(today_goals)
+    return f"✨ Goals set! \n Here's what's on your list for today: \n {goals_list}"
 
 
 def mark_done(phone_number, user_id, **kwargs):
@@ -143,14 +145,11 @@ def mark_done(phone_number, user_id, **kwargs):
             "completed_at": firestore.SERVER_TIMESTAMP,
         })
     batch.commit()
-
-    return f"Marked as done: {', '.join(verified_labels)}"
-
-def list_goals(phone_number, user_id, **kwargs):
-    user = get_user_data(user_id)
     today_goals = get_today_goals_for_user(user)
-    if not today_goals:
-        return "You have no goals set for today."
+    goals_list = build_goals_list(today_goals)
+    return f"💫 Way to go! Marked as done: {', '.join(verified_labels)} \n Remaining goals: {goals_list}"
+
+def build_goals_list(today_goals):
     total_points = sum(g.points for g in today_goals)
     completed_points = sum(g.points for g in today_goals if g.complete)
     if total_points == completed_points:
@@ -161,6 +160,14 @@ def list_goals(phone_number, user_id, **kwargs):
     normalized_earned = round(completed_points * 10 / total_points)
     progress_bar = "Progress: " + "■" * normalized_earned + "▢" * (10 - normalized_earned)
     return f"🎯Today's Goals\n\n{progress_bar}\n{progress_info}\n\n{goals_list}"
+
+def list_goals(phone_number, user_id, **kwargs):
+    user = get_user_data(user_id)
+    today_goals = get_today_goals_for_user(user)
+    if not today_goals:
+        return "You have no goals set for today."
+    response_text = build_goals_list(today_goals)    
+    return response_text
 
 
 class Actions(Enum):
