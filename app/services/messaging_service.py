@@ -17,6 +17,11 @@ completed_all_goals_msg = "None! 🎊 Congrats, you've completed all your goals 
 get_firebase_client()
 db = firestore.client()
 
+
+# TODO:
+# 1) Schedule morning & afternoon goal prompt
+# 2) Allow user to opt-out of morning and afternoon prompts
+
 def strip_text(text: Optional[str]) -> Optional[str]:
     if text is None:
         return None
@@ -63,7 +68,14 @@ Available commands:\n
     # return Response(content=str(resp), media_type="application/xml")
         
 def stop_service(phone_number, user_id, **kwargs):
-    return "Stop service"
+    user = get_user_data(user_id)
+    if not isinstance(user, UserDoc):
+        return not_found_msg
+    user_ref = db.collection("users").document(user_id)
+    user_ref.update({
+        "activated": False,
+    })
+    return "You have been unsubscribed from daily prompts. Text 'signup' to rejoin anytime."
 def help_request(phone_number, user_id, **kwargs):
     return "Didn't get that... need help? Send 'commands' for tips."
 def send_help(phone_number, user_id, **kwargs):
@@ -147,7 +159,7 @@ def mark_done(phone_number, user_id, **kwargs):
     batch.commit()
     today_goals = get_today_goals_for_user(user)
     goals_list = build_goals_list(today_goals)
-    return f"💫 Way to go! Marked as done: {', '.join(verified_labels)} \n Remaining goals: {goals_list}"
+    return f"💫 Way to go! Marked as done: {', '.join(verified_labels)} \n Remaining goals: \n {goals_list}"
 
 def build_goals_list(today_goals):
     total_points = sum(g.points for g in today_goals)
@@ -159,7 +171,7 @@ def build_goals_list(today_goals):
     progress_info = "Progress: " + f"{pct_complete}% ({completed_points}/{total_points} pts)"
     normalized_earned = round(completed_points * 10 / total_points)
     progress_bar = "Progress: " + "■" * normalized_earned + "▢" * (10 - normalized_earned)
-    return f"🎯Today's Goals\n\n{progress_bar}\n{progress_info}\n\n{goals_list}"
+    return f"🎯Today's Goals\n{goals_list}\n{progress_bar}\n{progress_info}\n"
 
 def list_goals(phone_number, user_id, **kwargs):
     user = get_user_data(user_id)

@@ -12,3 +12,4 @@ MY_PHONE = os.getenv("MY_PHONE_NUMBER")
 def send_sms(message):
     client = Client(TWILIO_SID, TWILIO_AUTH)
     client.messages.create(to=MY_PHONE, from_=TWILIO_NUMBER, body=message)
+
