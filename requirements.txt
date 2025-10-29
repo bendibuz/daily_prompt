@@ -12,3 +12,6 @@ py-phone-number-fmt
 dotenv
 pyserial-asyncio
 pyserial
+google-cloud-firestore
+google-api-core
+packaging
