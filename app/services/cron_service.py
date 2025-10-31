@@ -86,7 +86,8 @@ Here's your progress today:
 Progress: {completed_points}/{total_points} pts
 
 Reply with "done <goal name>" to mark any incomplete goals as done!
-(Replace <goal name> with the exact text of your goal.)"""
+(You can use key partial words from the goal text instead of typing the full goal name!)
+"""
 
     except Exception as e:
         log.error(f"Error building evening message for user {user.user_id}: {e}")

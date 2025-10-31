@@ -99,6 +99,31 @@ def set_goals(phone_number, user_id, **kwargs):
     return f"✨ Goals set! \n Here's what's on your list for today: \n {goals_list}"
 
 
+from difflib import SequenceMatcher
+
+def _fuzzy_score(a: str, b: str) -> float:
+    """
+    Lightweight fuzzy score combining:
+    - direct ratio
+    - token-sorted ratio (helps with word order differences)
+    - simple containment boost
+    Returns a score in [0, 1].
+    """
+    a = a or ""
+    b = b or ""
+    ratio = SequenceMatcher(None, a, b).ratio()
+
+    # token-sort ratio
+    at = " ".join(sorted(a.split()))
+    bt = " ".join(sorted(b.split()))
+    ts_ratio = SequenceMatcher(None, at, bt).ratio()
+
+    # containment boost if one contains the other (helps short queries)
+    contains_boost = 0.15 if (a and b and (a in b or b in a)) else 0.0
+
+    return min(1.0, max(ratio, ts_ratio) + contains_boost)
+
+
 def mark_done(phone_number, user_id, **kwargs):
     # 1) Resolve user
     user = get_user_data(user_id)
@@ -112,54 +137,71 @@ def mark_done(phone_number, user_id, **kwargs):
     if not targets_norm:
         return "No matching goals found to mark as done."
 
-    # 3) Load today's goal docs & build an index by normalized text
+    # 3) Load today's goal docs (collect INCOMPLETE only as candidates)
     goal_refs = get_today_goal_refs(user)
     docs = [(ref, ref.get()) for ref in goal_refs]
     doc_rows = [(ref, snap.to_dict() or {}) for ref, snap in docs if snap.exists]
 
-    # index: norm_text -> list of (ref, stored_text, already_complete)
-    from collections import defaultdict, deque
-    index = defaultdict(deque)
+    candidates = []
     for ref, data in doc_rows:
         stored_text = (data.get("goal_text") or "").strip()
         norm = strip_text(stored_text)
         already_complete = bool(data.get("complete"))
-        # only queue incomplete goals so we don't double-mark
-        if norm:
-            index[norm].append((ref, stored_text, already_complete))
+        if norm and not already_complete:
+            candidates.append({"ref": ref, "stored_text": stored_text, "norm": norm})
 
-    # 4) For each requested target, grab one matching (incomplete) doc (FIFO)
-    to_update = []
-    verified_labels = []  # for message
-    for norm in targets_norm:
-        bucket = index.get(norm)
-        if not bucket:
-            continue
-        # pop left until we find one not already complete
-        picked = None
-        while bucket and picked is None:
-            ref, stored_text, already_complete = bucket.popleft()
-            if not already_complete:
-                picked = (ref, stored_text)
-        if picked:
-            ref, stored_text = picked
-            to_update.append(ref)
-            verified_labels.append(stored_text)
-
-    # 5) Commit updates in a single batch
-    if not to_update:
+    if not candidates:
         return "No matching goals found to mark as done."
 
+    # 4) For each requested target, pick the closest unused candidate above a threshold
+    THRESHOLD = 0.60  # tweakable: lower = more permissive
+    picked_refs = set()
+    matches = []  # list of (ref, stored_text, input_text, score)
+
+    for q_norm, q_raw in zip(targets_norm, raw_targets):
+        best = None
+        best_score = -1.0
+        best_idx = -1
+
+        for idx, c in enumerate(candidates):
+            if c["ref"] in picked_refs:
+                continue
+            score = _fuzzy_score(q_norm, c["norm"])
+            if score > best_score:
+                best = c
+                best_score = score
+                best_idx = idx
+
+        if best and best_score >= THRESHOLD:
+            picked_refs.add(best["ref"])
+            matches.append((best["ref"], best["stored_text"], q_raw, best_score))
+        # else: nothing close enough — we silently skip this target
+
+    if not matches:
+        return "No matching goals found to mark as done."
+
+    # 5) Commit updates in a single batch
     batch = db.batch()
-    for ref in to_update:
+    for ref, _, _, _ in matches:
         batch.update(ref, {
             "complete": True,
             "completed_at": firestore.SERVER_TIMESTAMP,
         })
     batch.commit()
+
+    # 6) Build message (show what we matched to what, when fuzzy)
+    labeled = []
+    for _, stored_text, q_raw, score in matches:
+        # If it wasn't an exact normalized match, show mapping with a subtle confidence hint
+        if strip_text(stored_text) != strip_text(q_raw or ""):
+            labeled.append(f"“{stored_text}” (from “{q_raw}”, {round(score*100)}%)")
+        else:
+            labeled.append(f"“{stored_text}”")
+
     today_goals = get_today_goals_for_user(user)
     goals_list = build_goals_list(today_goals)
-    return f"💫 Way to go! Marked as done: {', '.join(verified_labels)} \n Remaining goals: \n {goals_list}"
+    return f"💫 Way to go! Marked as done: {', '.join(labeled)} \nRemaining goals:\n{goals_list}"
+
 
 def build_goals_list(today_goals):
     total_points = sum(g.points for g in today_goals)
