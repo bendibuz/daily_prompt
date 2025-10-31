@@ -15,6 +15,7 @@ from app.models.models import UserDoc
 from app.services.firebase_service import get_today_goals_for_user, dicts_to_goals
 
 log = logging.getLogger("cron_service")
+CDT_ZONE = ZoneInfo("America/Chicago")
 
 # Initialize Firebase
 get_firebase_client()
@@ -168,15 +169,15 @@ def start_scheduler():
         log.warning("Scheduler already running")
         return
 
-    scheduler = AsyncIOScheduler()
+    scheduler = AsyncIOScheduler(timezone=CDT_ZONE)
 
     # Morning prompt at 9:00 AM (in server timezone)
     # Note: For user-specific timezones, you'd need per-user jobs
-    morning_trigger = CronTrigger(hour=9, minute=0)
+    morning_trigger = CronTrigger(hour=9, minute=0, timezone=CDT_ZONE)
     scheduler.add_job(morning_job, morning_trigger, id="morning_prompt")
 
     # Evening prompt at 6:00 PM (in server timezone)
-    evening_trigger = CronTrigger(hour=18, minute=0)
+    evening_trigger = CronTrigger(hour=18, minute=0, timezone=CDT_ZONE)
     scheduler.add_job(evening_job, evening_trigger, id="evening_prompt")
 
     scheduler.start()
