@@ -10,6 +10,7 @@ from app.services.utilities.parser import parse_message
 from dataclasses import asdict
 from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs
 from app.models.models import UserDoc, Goal
+from app.services.esp_comms import push_goals_to_esp
 
 not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
 completed_all_goals_msg = "None! 🎊 Congrats, you've completed all your goals for today!\n 🙂‍↕️ Celebrate with a little treat, or text me a new goal to add more."
@@ -90,7 +91,10 @@ def set_goals(phone_number, user_id, **kwargs):
 
     goals = kwargs.get("new_goals", [])
     try:
-        create_goals_entry(goals=goals, user=user)
+        # Save to Firestore
+        # create_goals_entry(goals=goals, user=user)
+        # Push to ESP32
+        push_goals_to_esp(goals)
     except Exception as e:
         print(f'⚠️ Error creating goals: {e}')
         return "⚠️ Error saving goals. Please try again."
