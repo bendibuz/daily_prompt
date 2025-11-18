@@ -108,13 +108,13 @@ def set_goals(phone_number, user_id, **kwargs):
         # Save to Firestore
         # create_goals_entry(goals=goals, user=user)
         # Push to ESP32
-        push_goals_to_esp(goals)
+        push_goals_to_esp(goals, user_id)
     except Exception as e:
         print(f'⚠️ Error creating goals: {e}')
         return "⚠️ Error saving goals. Please try again."
     today_goals = get_today_goals_for_user(user)
     goals_list = build_goals_list(today_goals)
-    return f"✨ Goals set! \n Here's what's on your list for today: \n {goals_list}"
+    return f"✨ Goals set! \n\n {goals_list}"
 
 
 from difflib import SequenceMatcher
@@ -231,7 +231,7 @@ def build_goals_list(today_goals):
     progress_info = "Progress: " + f"{pct_complete}% ({completed_points}/{total_points} pts)"
     normalized_earned = round(completed_points * 10 / total_points)
     progress_bar = "Progress: " + "■" * normalized_earned + "▢" * (10 - normalized_earned)
-    return f"🎯Today's Goals\n{goals_list}\n{progress_bar}\n{progress_info}\n"
+    return f"🎯Today's Goals\n{goals_list}\n\n{progress_bar}\n{progress_info}\n"
 
 def list_goals(phone_number, user_id, **kwargs):
     user = get_user_data(user_id)
