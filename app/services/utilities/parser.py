@@ -80,6 +80,12 @@ def parse_message(message: str) -> MessageActions:
             done_text = extract_completed(part)
             if done_text:  # ignore empty 'done' lines
                 completed.append(done_text)
+        # If the message starts with "pair", extract the device ID, which is the rest of the line
+        elif re.match(r'^\s*pair\b', part, flags=re.IGNORECASE):
+            device_id = part.split(None, 1)[1].strip() if len(part.split(None, 1)) > 1 else None
+            if device_id:
+                print("Device pairing requested:", device_id)
+                parsed_actions.device_id = device_id
         else:
             goal = extract_new_goal(part)
             if goal["goal_text"]:

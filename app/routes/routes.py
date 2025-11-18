@@ -50,7 +50,7 @@ async def validate_twilio_request(request: Request):
 async def receive_sms(request: Request):
     try:
         
-        asyncio.create_task(request.app.state.svc.blink_led(2))
+        # asyncio.create_task(request.app.state.svc.blink_led(2))
         form = await validate_twilio_request(request)
         raw_from = form.get("From", "")
         body = (form.get("Body") or "").strip()
@@ -87,7 +87,7 @@ async def receive_sms(request: Request):
 @router.post("/testpath")
 async def test_receive_sms(request: Request, body: str = ""):
     try:
-        asyncio.create_task(request.app.state.svc.blink_led(2))
+        # asyncio.create_task(request.app.state.svc.blink_led(2))
         # form = await validate_twilio_request(request)
         raw_from = "+18478587030"
         body = body.strip()

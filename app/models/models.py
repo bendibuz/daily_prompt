@@ -48,9 +48,10 @@ class UserPhone:
 class UserDoc:
     user_id: str                 # Firestore UID or UUID
     display_name: Optional[str]
-    email: Optional[str]         # store only if you actually use it
+    # email: Optional[str]         # store only if you actually use it
     timezone: str = "America/Chicago"
     phones: List[str] = Field(default_factory=list)
+    devices: List[str] = Field(default_factory=list)
     activated: bool = False
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
@@ -72,3 +73,15 @@ class MessageActions:
     unsubscribe: bool = False
     mark_done: List[str] = Field(default_factory=list)
     new_goals: List[str] = Field(default_factory=list)
+    device_id: Optional[str] = None
+
+@dataclass
+class Devices:
+    device_id: str
+    user_id: str
+    created_at: datetime = Field(default_factory=utcnow)
+    last_seen: Optional[datetime] = None
+    device_name: Optional[str] = None
+    device_version: Optional[str] = None
+    last_sync: Optional[datetime] = None
+    # secret: Optional[str] = None  # for authentication

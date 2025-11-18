@@ -93,3 +93,13 @@ def get_today_goal_refs(user: UserDoc) -> list[firestore.DocumentReference]:
     user_day_ref = db.collection("users").document(user.user_id).collection("days").document(date_key)
     goals_snap = user_day_ref.collection("goals").get()
     return [doc.reference for doc in goals_snap]
+
+def pair_user_device(user: UserDoc, device_id: str) -> None:
+    user_ref = db.collection("users").document(user.user_id).collection("devices")
+    user_ref.add({
+        "device_id": device_id,
+        "created_at": datetime.now(timezone.utc),
+        "updated_at": datetime.now(timezone.utc),
+        "last_seen": datetime.now(timezone.utc),
+        "device_name": "Digidoit v0.1"
+    })

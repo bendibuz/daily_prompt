@@ -8,7 +8,7 @@ from app.utilities import utcnow, normalize_to_e164
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.services.utilities.parser import parse_message
 from dataclasses import asdict
-from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs
+from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs, pair_user_device
 from app.models.models import UserDoc, Goal
 from app.services.esp_comms import push_goals_to_esp
 
@@ -22,6 +22,20 @@ db = firestore.client()
 # TODO:
 # 1) Schedule morning & afternoon goal prompt
 # 2) Allow user to opt-out of morning and afternoon prompts
+
+def register_device(phone_number, user_id, **kwargs) -> None:
+    user = get_user_data(user_id)
+    if not isinstance(user, UserDoc):
+        return not_found_msg
+    device_id = kwargs.get("device_id")
+    if not device_id:
+        return "⚠️ No device ID provided for pairing."
+    try:
+        pair_user_device(user, device_id)
+        return f"✅ Device {device_id} successfully paired to your account."
+    except Exception as e:
+        print(f'⚠️ Error pairing device {device_id} to user {user.user_id}: {e}')
+        return f"⚠️ Error pairing device {device_id}. Please try again."
 
 def strip_text(text: Optional[str]) -> Optional[str]:
     if text is None:
@@ -237,7 +251,7 @@ class Actions(Enum):
     SET_GOALS = set_goals
     MARK_DONE = mark_done
     LIST_GOALS = list_goals
-    # UNKNOWN = unknown
+    PAIR_DEVICE = register_device
 
 
 def commit_actions(phone_number, user_id, actions, **kwargs) -> bool:
@@ -258,7 +272,6 @@ def commit_actions(phone_number, user_id, actions, **kwargs) -> bool:
     return reply_messages
 
 
-# 🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲🪲 Beatlemania
 def resolve_user_id_by_phone(e164: str) -> Optional[str]:
     binding_ref = db.document(f"phone_bindings/{e164}")
     binding_doc = binding_ref.get()
@@ -283,7 +296,6 @@ def resolve_user_id_by_phone(e164: str) -> Optional[str]:
 
     return None
 
-# 🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞🐞 Ladybug
 def save_raw_message(
     message_body: str,
     from_number: str,
@@ -385,6 +397,7 @@ def handle_incoming_message(
             if(parsed.list_goals): next_actions.append(Actions.LIST_GOALS)
             if(len(parsed.new_goals) > 0): next_actions.append(Actions.SET_GOALS)
             if(len(parsed.mark_done) > 0): next_actions.append(Actions.MARK_DONE)
+            if(parsed.device_id): next_actions.append(Actions.PAIR_DEVICE)
             if len(next_actions) == 0 or parsed == {}:
                 next_actions.append(Actions.HELP_REQ)
 
@@ -397,3 +410,4 @@ def handle_incoming_message(
     else:
         compiled_response = build_response(reply_messages)
         return compiled_response
+
