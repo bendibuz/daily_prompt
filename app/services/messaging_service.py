@@ -10,7 +10,6 @@ from app.services.utilities.parser import parse_message
 from dataclasses import asdict
 from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs, pair_user_device, get_user_data
 from app.models.models import UserDoc, Goal, Device
-from app.services.esp_comms import push_goals_to_esp
 
 not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
 completed_all_goals_msg = "None! 🎊 Congrats, you've completed all your goals for today!\n 🙂‍↕️ Celebrate with a little treat, or text me a new goal to add more."
