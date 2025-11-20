@@ -12,8 +12,10 @@ class Goal:
     goal_text: str
     points: int = 0
     complete: bool = False
+    synced_to_device: bool = False
     created_at: Optional[datetime] = Field(default_factory=utcnow)
     updated_at: Optional[datetime] = None
+    updated_by: Optional[str] = None  # device or server
 
 @dataclass
 class Day:
@@ -76,7 +78,7 @@ class MessageActions:
     device_id: Optional[str] = None
 
 @dataclass
-class Devices:
+class Device:
     device_id: str
     user_id: str
     created_at: datetime = Field(default_factory=utcnow)
@@ -84,4 +86,15 @@ class Devices:
     device_name: Optional[str] = None
     device_version: Optional[str] = None
     last_sync: Optional[datetime] = None
+    last_sync_token: Optional[str] = None
     # secret: Optional[str] = None  # for authentication
+
+@dataclass
+class DeviceGoalChange:
+    id: str
+    completed: bool
+
+@dataclass
+class DeviceSyncPayload:
+    changes: List[DeviceGoalChange] = Field(default_factory=list)
+    last_sync_token: Optional[int] = None

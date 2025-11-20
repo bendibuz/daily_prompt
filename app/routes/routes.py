@@ -1,4 +1,4 @@
-from app.models.models import UserDoc
+from app.models.models import UserDoc, DeviceSyncPayload
 from twilio.twiml.messaging_response import MessagingResponse
 from fastapi import APIRouter, Request, Response, HTTPException
 from app.services.messaging_service import (
@@ -11,7 +11,9 @@ import os
 from twilio.request_validator import RequestValidator
 import logging
 from app.config import settings
-import asyncio
+from typing import List
+from app.services.firebase_service import sync_user_goals
+
 
 router = APIRouter()
 log = logging.getLogger("routes.sms")
@@ -128,3 +130,13 @@ def create_user(user: UserDoc):
     from app.services.firebase_service import add_new_user
     return add_new_user(user)
 
+@router.post("/sync/{device_id}")
+def sync_user_goals_route(device_id: str, payload: DeviceSyncPayload):
+    print(f"Received request to sync with device {device_id}")
+    goals = sync_user_goals(device_id=device_id, changes=payload.changes)
+    return {"goals": goals}
+
+@router.post("/ping")
+def ping():
+    print("Ping")
+    return("Ping")

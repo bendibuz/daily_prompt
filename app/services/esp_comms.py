@@ -53,3 +53,32 @@ def push_goals_to_esp(goals: list[Goal]) -> None:
         except Exception as e:
             # Don't break Twilio flow if ESP is offline
             print(f"⚠️ Error pushing goal to ESP: {e}")
+
+def clear_goals_on_esp() -> None:
+    """
+    Clear all goals on the ESP32 over WiFi.
+    """
+    try:
+        resp = requests.post(
+            f"{ESP32_BASE_URL}/clear",
+            timeout=1.5,  # short so Twilio webhook doesn’t hang
+        )
+        if resp.status_code != 200:
+            print(f"⚠️ ESP clear failed ({resp.status_code}): {resp.text}")
+    except Exception as e:
+        # Don't break Twilio flow if ESP is offline
+        print(f"⚠️ Error clearing goals on ESP: {e}")
+
+
+def send_goals_state():
+    """Send the current goals state to the ESP32 to sync.
+
+    The ESP32 will periodically poll for state, and this will respond with JSON like:
+    {
+        "goals": [
+            {"goal_text": "Walk the dog", "points": 5, "complete": false},
+            {"goal_text": "Read a book", "points": 3, "complete": true}
+        ]    
+    """
+    
+    

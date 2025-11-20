@@ -8,8 +8,8 @@ from app.utilities import utcnow, normalize_to_e164
 from app.services.auth_phone import get_or_create_user_for_phone, bind_phone_to_user
 from app.services.utilities.parser import parse_message
 from dataclasses import asdict
-from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs, pair_user_device
-from app.models.models import UserDoc, Goal
+from app.services.firebase_service import create_goals_entry, get_today_goals_for_user, get_today_goal_refs, pair_user_device, get_user_data
+from app.models.models import UserDoc, Goal, Device
 from app.services.esp_comms import push_goals_to_esp
 
 not_found_msg = "👋 Hello! Please sign up first by texting 'signup'."
@@ -42,16 +42,6 @@ def strip_text(text: Optional[str]) -> Optional[str]:
         return None
     return text.strip().lower()
 
-def get_user_data(user_id: str) -> Optional[UserDoc]:
-    if user_id is None:
-        return not_found_msg
-    user_ref = db.collection("users").document(user_id)
-    user_doc = user_ref.get()
-    if not user_doc.exists:
-        return not_found_msg
-    user_data = user_doc.to_dict() or {}
-    user = UserDoc(**user_data)
-    return user
 
 def build_response(reply_messages):
     concat = "\n".join(str(m) for m in reply_messages)
@@ -102,7 +92,8 @@ def send_help(phone_number, user_id, **kwargs):
 # These two can be added together into one message
 def set_goals(phone_number, user_id, **kwargs):
     user = get_user_data(user_id)
-
+    if not isinstance(user, UserDoc):
+        return not_found_msg
     goals = kwargs.get("new_goals", [])
     try:
         # Save to Firestore
