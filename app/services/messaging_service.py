@@ -97,9 +97,7 @@ def set_goals(phone_number, user_id, **kwargs):
     goals = kwargs.get("new_goals", [])
     try:
         # Save to Firestore
-        # create_goals_entry(goals=goals, user=user)
-        # Push to ESP32
-        push_goals_to_esp(goals, user_id)
+        create_goals_entry(goals=goals, user=user)
     except Exception as e:
         print(f'⚠️ Error creating goals: {e}')
         return "⚠️ Error saving goals. Please try again."
